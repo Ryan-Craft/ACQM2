@@ -1,17 +1,17 @@
 
-subroutine NumerovForwards(psi_L, V, rgrid, nr, E)
+subroutine NumerovForwards(psi_L, V, rgrid, nr, E, n, s, dr)
 
     implicit none
     
     ! initialise local and inbound variables
     integer :: i, j
-    real *8, intent(in) :: nr
-
+    real *8, intent(in) :: s, E, dr, n
+    integer, intent(in) :: nr
     ! array init
 
     real* 8, dimension(nr), intent(in) :: rgrid
     real* 8, dimension(nr), intent(in) :: V
-    real* 8, dimension(nr), intent(in) :: psi_L
+    real* 8, dimension(nr):: psi_L
     real*8, dimension(nr) :: g
 
 
@@ -20,28 +20,54 @@ subroutine NumerovForwards(psi_L, V, rgrid, nr, E)
     do i=1,nr
         Print *, g(i)
     end do
-    
-    do i=1,nr
-        
 
+   
+    ! for the recurrence relation we need to initialise two values of psi
+    psi_L(1) = 0.0d0
+    psi_L(2) = (-1)**n * s
+
+    ! this is essentially a recurrence relation like the Laguerre situation 
+    do i=3,nr
+        psi_L(i) = ( 2*(1+(5*dr**2/12)*g(i-1))*psi_L(i-1) - (1 - (dr**2/12)*g(i-2))*psi_L(i-2) )  / (1 - (dr**2/12)*g(i))     
     end do
-    
-    
+   
 
-    !generate local variables
+end subroutine NumerovForwards
+
+subroutine NumerovBackwards(psi_R, V, rgrid, nr, E, n, s, dr)
+
+    implicit none
+
+    ! initialise local and inbound variables
+    integer :: i, j
+    real *8, intent(in) :: s, E, dr, n
+    integer, intent(in) :: nr
+
+    ! array init
+
+    real* 8, dimension(nr), intent(in) :: rgrid
+    real* 8, dimension(nr), intent(in) :: V
+    real* 8, dimension(nr) :: psi_R
+    real*8, dimension(nr) :: g
+
+    g = 2*(V-E)
+
+    do i=1,nr
+        Print *, g(i)
+    end do
 
 
+    ! for the recurrence relation we need to initialise two values of psi
+    psi_R(nr) = 0.0d0
+    psi_R(nr-1) = s
+
+    !numerov but hes backwards
+    do i= nr-2,1, -1 
+        psi_R(i) =  ( psi_R(i+2)*(1-(dr**2/12)*g(i+2)) - 2*(1 + (5*dr**2 / 12)*g(i+1))*psi_R(i+1) )  / (1 - (dr**2/12)*g(i))
+    end do 
 
 
-
-
-
-
-end NumerovForwards
-
-
-
-
+end subroutine NumerovBackwards
 
 
 
@@ -49,8 +75,8 @@ end NumerovForwards
 program NumerovsQHO
     implicit none
 
-    integer*8 :: i, j, nr
-    real*8 :: dr, rmax, n, E, E_min, E_max
+    integer :: i, j, nr
+    real*8 :: dr, rmax, E, E_min, E_max, n
 
     !ARRAY INITIALISATION
     real*8, dimension(:), allocatable :: rgrid, V
@@ -102,7 +128,7 @@ program NumerovsQHO
     do i=1,nr
         write(1, '(*(f12.8))') rgrid(i), V(i)
     end do
-
+    close(1)
     
     !Initial guess E, based on n
     ! I find this a bit weird because we know the energies of the QHO exactly; En = (n+1/2)*w*h_bar
@@ -112,8 +138,15 @@ program NumerovsQHO
     E_min = n
     E_max = n+0.75
     E = (E_min + E_max)/2 
-    
 
+    call NumerovForwards(psi_L, V, rgrid, nr, E, n, 0.001, dr)
+    call NumerovBackwards(psi_R, V, rgrid, nr, E, n, 0.001, dr)  
+
+    open(unit=1, file="psi.txt", action="write")
+    do i=1,nr
+        write(1, '(*(f8.4))') rgrid(i), psi_L(i), psi_R(i)
+    end do
+    close(1)
 
 
 
