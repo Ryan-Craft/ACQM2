@@ -1,0 +1,358 @@
+\documentclass{article}
+\usepackage{graphicx, multicol} % Required for inserting images
+\usepackage{amsfonts,amssymb,amsmath,mathbbol,amsthm,amstext,esint,nccmath,upgreek}
+\usepackage{graphics,graphicx,epsfig, xcolor, soul}
+\usepackage[normalem]{ulem}
+\usepackage[margin={2cm,2cm}]{geometry}
+\usepackage{tikz,pgfplots, hyperref}
+\usepackage{siunitx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{physics}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage[american,siunitx]{circuitikz}
+\usepackage{caption}
+\usepackage{subcaption}
+\newcolumntype{M}[1]{>{\centering\arraybackslash}m{#1}}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=1.3}
+\renewcommand{\vec}[1]{\mathbf{#1}}
+\let\oldhat\hat
+\renewcommand{\hat}[1]{\oldhat{\mathbf{#1}}}
+
+\AtBeginDocument{
+\RenewCommandCopy\qty\SI
+\heavyrulewidth=.08em
+\lightrulewidth=.05em
+\cmidrulewidth=.03em
+\belowrulesep=.65ex
+\belowbottomsep=0pt
+\aboverulesep=.4ex
+\abovetopsep=0pt
+\cmidrulesep=\doublerulesep
+\cmidrulekern=.5em
+\defaultaddspace=.5em
+\parindent=0pt
+\parskip=6pt plus 2pt
+}
+\usepackage[authordate,natbib,maxcitenames=3]{biblatex-chicago}
+\addbibresource{bib2.bib}
+\setcounter{tocdepth}{5}
+\setcounter{secnumdepth}{5}
+\newcommand\simpleparagraph[1]{%
+	\stepcounter{paragraph}\paragraph*{\theparagraph\quad{}#1}}
+
+
+
+\begin{document}
+\noindent
+	\title{Computational Assignment 2: Solving Molecular Vibrational Wavefunctions}
+	\author{Ryan Craft}
+    \maketitle 
+    
+    \section{Problem 1: H2+ potential energy}
+    Find the code for this assignment at the public github repo \url{https://github.com/Ryan-Craft/ACQM_FortranRepo.git}, inside of comp2\_1/main.f90 and vibe.f90. Images have been kept at Report/Report2/Images if you cannot successfully recreate the plots. Please also see the README.txt in the comp2\_1 folder for notes on the GNUPLOT scripts and associated data files.
+    
+    Molecular wavefunctions contain information about a molecules vibrational, electronic and rotational states:
+    
+    \begin{gather}
+    	\Phi = \Phi_{nvj}(\vec{r_1},\vec{r_2},...,\vec{R_1},\vec{R_2},...)
+    \end{gather}
+    For $n$ electronic, $v$ vibrational, $j$ rotational states for $\vec{r_i}$ and $\vec{R_i}$ being the electronic and nuclear coordinate vectors.
+    
+    We can approximate solutions to these problems in a similar to the hydrogen atom, we assume separable solutions to the wavefunction for the electronic and nuclear radial states:
+    
+    \begin{gather}
+    	\Phi_{nvj}(\vec{r_1},\vec{r_2},...,\vec{R_1},\vec{R_2},...) = \Phi_{n}(\vec{r_1},...,\vec{R_1},...)\Phi_{vj}^{n}(\vec{R_1},...)
+    \end{gather}
+    
+    And now we can consider the action of electronic and nuclear Hamiltonian on the respective electronic and nuclear components of the separable wavefunction:
+    
+    \begin{gather}
+    	H_{elec}\Phi_{n} = \epsilon_n\Phi_{n}\\
+    	H_{total}\Phi_{nvj} = (	H_{elec} + H_{nuclear})\Phi_{n}\Phi_{vj}^{n}\\
+    	H_{total}\Phi_{nvj} = (\epsilon_n(\vec{R_1},\vec{R_2},...) + H_{nuclear})\Phi_{n}\Phi_{vj}^{n}
+    \end{gather}
+    
+    Where the total Hamiltonian must satisfy:
+    
+    \begin{gather}
+    	H_{total}\Phi_{nvj} = \varepsilon_{nvj}\Phi_{nvj}
+    \end{gather}
+    Where $\varepsilon_{nvj}$ is the total energy of the molecule.
+    
+    We want to solve this in two steps:
+    \begin{itemize}
+    	\item - Solve for electronic potential energy equivalent $\epsilon_n(\vec{R_1},\vec{R_2},...)$
+    	\item - Use $\epsilon_n$ to solve for nuclear SE
+    \end{itemize}
+    
+    We choose coordinates such that the electronic hamiltonian is represented as:
+    
+    \begin{gather}
+    	H_{elec} = -\frac{1}{2}\triangledown^2_\vec{r} + V(\vec{r}) + \frac{1}{R}
+    \end{gather}
+    For an internuclear separation $R$. We ignore it in the Hamiltonian and add it to the energies later because its a scalar.
+    
+    We define the potential matrix:
+    \begin{gather}
+    	V_{ij} = -2\delta_{m_i m_j} \delta_{\pi_i \pi_j} \sum_{\lambda\;even}^{\lambda_{max}} \int_{0}^{\infty} \psi_{k_i l_i}(r) \frac{r_{<}^{\lambda}}{r_{>}^{\lambda+1}} \psi_{k_j l_j}(r) dr \sqrt{\frac{4\pi}{2\lambda+1}} \bra{Y^{m_i}_{l_i}}Y_{\lambda}^0\ket{Y^{m_j}_{l_j}}
+    \end{gather}
+    
+    Changes to the code are implemented in the following listings, found in \textit{main.f90}.
+    
+\begin{lstlisting}[language=fortran]
+V = 0.0d0
+do i=1, num_func
+	do j=1, num_func
+	  li = l_list(i)
+	  lj = l_list(j)
+	  !calculate V matrix
+	   	
+	  do lam=0, 2*lmax
+	   	 y_int = Yint(li,m,lam,0.0d0,lj,m)
+		 if(mod(lam,2.0d0) > 0) cycle 
+		 V(i,j) = V(i,j) + sum(basis(2:,j) * min(rgrid(2:),Rn/2.0d0)**lam / 
+		 max(rgrid(2:),Rn/2.0d0)**(lam+1) * basis(2:,i) * weights(2:)) * y_int       
+	  end do
+	   	
+	V(i,j) = -2.0d0 * V(i,j)
+	end do
+end do
+\end{lstlisting}
+
+Where we have applied numerical integration and the Yint subroutine provided to calculate spherical harmonic components.
+
+We recalculate the K and B matrix;
+
+\begin{lstlisting}[language=fortran]
+B = 0.0d0
+do i =1,num_func-1
+	B(i,i) = 1.0d0
+	l = l_list(i)
+	j = k_list(i)
+	if(l_list(i+1) /= l ) cycle
+	B(i,i+1) = -0.5d0*sqrt(1.0d0-( (l*(l+1.0d0)) / ((j+l)*(j+l+1.0d0))))
+	B(i+1,i) = B(i,i+1)
+end do
+B(num_func,num_func) = 1
+\end{lstlisting}
+\begin{lstlisting}[language=fortran]
+K=0.0d0
+K = (-alpha**2/2.0d0)*B
+do i=1,num_func
+	K(i,i) = K(i,i) + alpha**2
+end do
+\end{lstlisting}
+
+And H is constructed as the sum of K and V matricies.
+
+A note on the basis, to populate the basis for a given mmax, lmax and parity we have modified the LaguerreSub subroutine in the following way:
+
+\begin{lstlisting}[language=fortran]
+subroutine LaguerreSub(alpha, nr, rgrid, basis, k_list, l_list, num_func)
+	implicit none
+	
+	!generate local variables
+	integer*8 :: p
+	integer :: i,j, num_func
+	real*8 :: normalise
+	
+	!generate input and output variables
+	integer, intent(in) :: nr    
+	real*8, INTENT(IN) :: alpha
+	
+	!generate input and output arrays
+	real*8, dimension(nr), INTENT(IN) :: rgrid
+	real*8, dimension(nr,num_func), INTENT(OUT) :: basis
+	real*8, dimension(num_func), INTENT(IN) :: k_list
+	real*8, dimension(num_func), INTENT(IN) :: l_list
+	
+	do i = 1, num_func
+	  if(k_list(i) .eq. 1) then
+	  basis(:,i) = (2.0d0*alpha*rgrid(:))**(l_list(i)+1) *exp(-alpha*rgrid(:))
+		else if(k_list(i) .eq. 2) then
+	      basis(:,i) = 2.0d0*((l_list(i)+1)-alpha*rgrid(:)) * 
+		  (2.0d0*alpha*rgrid(:))**(l_list(i)+1) *exp(-alpha*rgrid(:))
+		else
+		  basis(:,i) = (2.0d0*(k_list(i)-1+l_list(i)-alpha*rgrid(:))*basis(:,i-1) 
+		  - (k_list(i)+2*l_list(i)-1)*basis(:,i-2) )  / (k_list(i)-1)
+		end if
+	end do
+	
+	
+	do i = 1,num_func
+		p=1.0
+		do j = 0, 2*l_list(i)
+			p = p*(k_list(i)+2*l_list(i)-j)
+			!Print *, p, j
+		end do
+		normalise = sqrt(alpha /((k_list(i)+l_list(i))* p))
+		!Print *, "Norm:: ", normalise
+		basis(:,i) = normalise*basis(:,i)
+	end do
+	return
+end subroutine LaguerreSub
+\end{lstlisting}
+
+To compute the electronic energies for different values of R, we use the script \textit{run.sh}, which runs \textit{main.f90} in multiple directories before collating the information into \textit{PEC.*} directories. Below are figures of the calculated 1ssg and 2psu electronic energies for varied interatomic distances compared with accurate values. Note that for $lmax = i, mmax=i-1$. 
+
+To show convergence of the calculated potentials with the accurate potentials we show the convergence behaviour of the outputs for fixed N=10, $\alpha=1$, dr=0.0001, rmax=50 at varied lmax in figures \ref{L1N10} to \ref{L4N10}. 
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/L1N10}\\
+	\caption{1ssg and 2psu calculated electronic energies as a function of R vs accurate values from PEC.1ssg/2psu. N=10, $\alpha=1$, lmax=1}
+	\label{L1N10}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/L2N10}\\
+	\caption{1ssg and 2psu calculated electronic energies as a function of R vs accurate values from PEC.1ssg/2psu. N=10, $\alpha=1$, lmax=2}
+	\label{L2N10}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/L3N10}\\
+	\caption{1ssg and 2psu calculated electronic energies as a function of R vs accurate values from PEC.1ssg/2psu. N=10, $\alpha=1$, lmax=3}
+	\label{L3N10}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/L4N10}\\
+	\caption{1ssg and 2psu calculated electronic energies as a function of R vs accurate values from PEC.1ssg/2psu. N=10, $\alpha=1$, lmax=4}
+	\label{L4N10}
+\end{figure}
+
+We can see that for all cases where lmax increases, the calculated electronic energies tend closer to the accurate curves. Disagreement tends to become significant between separations of 2-4 $a_0$. Additionally, it seems that the 1ssg states converges faster than the 2psu state for this set of basis. We also note that for odd lmax in this set, for the asymptotic region of the calculated energies, the 1ssg and 2psu states seem to be the same. 
+
+For a larger basis sizes and higher accuracy of the integrals, we would expect both curved to converge to the ones predicted by the PEC files.
+
+We now check for convergence for fixed lmax and increasing N: 
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/N2L4}\\
+	\caption{1ssg and 2psu calculated electronic energies as a function of R vs accurate values from PEC.1ssg/2psu. N=1, $\alpha=1$, lmax=4}
+	\label{N2L4}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/N5L4}\\
+	\caption{1ssg and 2psu calculated electronic energies as a function of R vs accurate values from PEC.1ssg/2psu. N=5, $\alpha=1$, lmax42}
+	\label{N5L4}
+\end{figure}
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/N10L4}\\
+	\caption{1ssg and 2psu calculated electronic energies as a function of R vs accurate values from PEC.1ssg/2psu. N=10, $\alpha=1$, lmax=4}
+	\label{N10L4}
+\end{figure}
+
+We note that for this choice of alpha and lmax, doubling the number of basis per l from 5 to 10 does not have a serious impact on the convergence to the accurate values. This implies that N must go much higher, alpha must be modified, or we need to include many more states in lmax to approach a higher agreement with the values predicted in the PEC.1ssh/2psu files. This would likely take substantial computing time before the values became close to identical. 
+
+The energies for each R are sorted using the sortin algorithm given in the lecture slides but placed inside a subroutine called \textit{sortenergies}, inside the \textit{sort.f90} file. \textit{run.sh} organises these into PEC files for each electronic state.
+
+    
+    \subsection{Problem 2: Vibrational Wavefunctions}
+   
+	
+	To calculate the wavefunction of the nuclear component, the equation:
+	\begin{gather}
+		\left[-\frac{1}{2\mu}\frac{d^2}{dR^2} + \epsilon_n(R)\right] \Phi^{n}_{v}(R) = \varepsilon_{nv}\Phi^{n}_{v}(R)
+	\end{gather} 
+	
+	Needs to be solved. We can do this using the program from last assignment which is modified and renamed to \textit{vibe.f90}. Which takes the same parameters as the original LaguerreParams.txt (renamed to VibeParams.txt) but with the addition of the reduced mass $\mu$ in both.
+	
+	We calculate the potential:
+	
+	\begin{gather}
+		V_{ij} = \int_{0}^{\infty} \phi_{k_il_i}(R) \epsilon_n(R) \phi_{k_jl_j}(R)dR
+	\end{gather}
+	For some basis functions $\phi_{k_il_i}$ and $\phi_{k_jl_j}$ using the following modified code: 
+	
+\begin{lstlisting}[language=fortran]
+V = 0.0d0
+do i=1,N
+	do j=1,N
+	  V(i,j) = sum(basis(2:,i) * V_interp(:,2) * basis(2:,j) * weights(2:))
+	end do
+end do
+\end{lstlisting}
+
+Where we have interpolated the PEC.1ssg file using the \textit{interp} subroutine from \textit{interp.f}, to get the values of PEC.1ssg onto our radial grid.
+The Hamiltonian is then constructed using H = (1/mu)*K + V, where we calculate K and B in the same way as last assessment. 
+
+After calling the rsg subroutine to get the energies for these states, we reconstruct their wavefunctions using:
+
+\begin{lstlisting}[language=fortran]
+do i =1,N
+  do j = 1,N
+    wf(:,i) = z(j,i)*basis(:,j) + wf(:,i)
+  end do
+end do
+\end{lstlisting}
+
+Where we have used the fact that 
+
+\begin{gather}
+	\Phi(r) = \sum_{j}^{N} c_{ji} \phi_j(r)
+\end{gather}
+
+To get the vibrational state wavefunctions for the different isotopologues.
+
+These wavefunction are then written to an output file \textit{wfout.txt}. The first four vibrational state squared wavefunctions for $H_2^+$ inside the 1ssg potential are visualised in figure \ref{H2}, shifted on the y axis by their energy and down-scaled in magnitude by 0.005. Calculations used N=50, dr=0.001, rmax = 100, $\alpha=10$, l=0 for $\mu$ = 918.07635 amu.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/H2}\\
+	\caption{First four vibrational wavefunctions of $H_2^+$ (v=0,1,2,3) inside the 1ssg potential.}
+	\label{H2}
+\end{figure}
+
+Where we write $\psi_i$ for $\Phi_{i-1}^{1}(R)$ nuclear wavefunction. 
+Examining figure \ref{H2} indicates that the largest peak in the probability distribution for each vibrational energy level tends to be further away from the origin.
+It seems that the figure indicates that higher vibrational energ states increase the distance of the average inter-nuclear separation also, which is to be expected from the shape of the potential. 
+Also worth noting is that as this is a finite potential, there are non-zero components of the wavefunction outside of the barrier. This means that the nuclei are able to becomes separated more than they would typically be able to in the classical case.
+
+Comparison of different $v=0$ wavefunctions inside 1ssg, for different $\mu$ are presented in figure \ref{v0}. In this case each wavefunction is displaced on the x axis relative to $\psi_2$ by an integer factor in order to examine difference in magnitude of each wavefunction. Each wavefunction $\psi_i$ is rougly centralised on the x axis at i. The different $\mu$ are listed on table \ref{tab}.
+
+\begin{figure}[H]
+	\centering
+	\includegraphics[scale=0.7]{Images/v0}
+	\caption{The v=0 wavefunction of 6 isotopologues of $H_2^+$ in order from lightest (left) to heaviest (right) and displaced on the x axis for comparison purposes. N=50, $\alpha$=10, l=0, dr=0.0001, rmax=100.}
+	\label{v0}
+\end{figure}
+	
+\begin{center}
+	\label{tab}
+	\begin{tabular}{ccc}\toprule
+	Molecule	&  $\mu$ amu &$v=0, l=0$ Energy (Ha) \\\bottomrule
+	$H_2$	& 918.07635 & -0.5973\\
+	$HD$	& 1223.89925&-0.5980\\
+	$HT$	& 1376.39236&-0.5983\\
+	$D_2$	& 1835.24151&-0.5989\\
+	$DT$	& 2200.87999&-0.5992\\
+	$T_2$	& 2748.46079&-0.5995\\\bottomrule
+	\end{tabular}
+\end{center}
+
+From a combination of table \ref{tab} and figure \ref{v0} the trend is that as the reduced mass increases, the lowest vibrational state energy decreases, approaching the minimum value of the potential (around $\approx -0.606$). The squared wavefunction maximum increases and the width of it narrows. Heavier isotopes of $H_2^+$ seems to cause the molecule to have a wavefunction where the inter-nuclear separation narrows around the minimum of the potential. This is expected as the atoms get more massive, as they would be 'moving' more slowly around the equilibrium point for the same energy (classical analogy). 
+
+	
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
