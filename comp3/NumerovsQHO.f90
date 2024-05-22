@@ -21,6 +21,10 @@ subroutine NumerovForwards(psi_L, V, rgrid, nr, E)
         Print *, g(i)
     end do
     
+    do i=1,nr
+        
+
+    end do
     
     
 
