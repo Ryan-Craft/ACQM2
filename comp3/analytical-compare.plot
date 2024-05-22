@@ -13,5 +13,5 @@ psi_3(x) = pi**(-0.25)*exp(-x**2 / 2) * (1/sqrt(3)) * (2*x**3 - 3*x)
 set xrange[-10:10]
 set yrange[0:5]
 
-plot v(x), psi_0(x), psi_1(x) + 1.5, psi_2(x) + 2.5, psi_3(x) + 3.5, "psi_L.txt" u 1:2, "psi_L.txt" u 1:3
+plot v(x), psi_0(x), psi_1(x) + 1.5, psi_2(x) + 2.5, psi_3(x) + 3.5, "psi.txt" u 1:2, "psi.txt" u 1:3, "psi.txt" u 1:4
 

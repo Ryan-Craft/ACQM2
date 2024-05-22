@@ -18,7 +18,7 @@ subroutine NumerovForwards(psi_L, V, rgrid, nr, E, n, s, dr)
     g = 2*(V-E)
     
     do i=1,nr
-        Print *, g(i)
+    !    Print *, g(i)
     end do
 
    
@@ -53,7 +53,7 @@ subroutine NumerovBackwards(psi_R, V, rgrid, nr, E, n, s, dr)
     g = 2*(V-E)
 
     do i=1,nr
-        Print *, g(i)
+     !   Print *, g(i)
     end do
 
 
@@ -63,8 +63,11 @@ subroutine NumerovBackwards(psi_R, V, rgrid, nr, E, n, s, dr)
 
     !numerov but hes backwards
     do i= nr-2,1, -1 
-        psi_R(i) =  ( psi_R(i+2)*(1-(dr**2/12)*g(i+2)) - 2*(1 + (5*dr**2 / 12)*g(i+1))*psi_R(i+1) )  / (1 - (dr**2/12)*g(i))
+        psi_R(i) =  (psi_R(i+2)*(1-(dr**2/12)*g(i+2)) - 2*(1 + (5*dr**2 / 12)*g(i+1))*psi_R(i+1) )  / (1 - (dr**2/12)*g(i))
     end do 
+    
+    psi_R = psi_R*(-1)
+
 
 
 end subroutine NumerovBackwards
@@ -76,7 +79,7 @@ program NumerovsQHO
     implicit none
 
     integer :: i, j, nr
-    real*8 :: dr, rmax, E, E_min, E_max, n
+    real*8 :: dr, rmax, E, E_min, E_max, n, x_m
 
     !ARRAY INITIALISATION
     real*8, dimension(:), allocatable :: rgrid, V
@@ -139,14 +142,60 @@ program NumerovsQHO
     E_max = n+0.75
     E = (E_min + E_max)/2 
 
-    call NumerovForwards(psi_L, V, rgrid, nr, E, n, 0.001, dr)
-    call NumerovBackwards(psi_R, V, rgrid, nr, E, n, 0.001, dr)  
+       
+    ! combining left and right functions::
+    ! need to choose an x_m that is suitable. Looks like every second function is zero at zero. So for every second function ill displace 
+    ! xm by some value to the right.
+
+    if (mod(n,2.0) > 0 ) then
+        !odd functions have a node at zero
+        ! we actually want to reference an array element here for x_m so we can get the corresponding element of psi_~
+        x_m = int(nr/2 + 1/dr)
+
+    else
+        x_m = nr/2
+
+    end if
+    Print *, "x_m set to", x_m
+ 
+    !now we can combine the functions
+    
+    call NumerovForwards(psi_L, V, rgrid, nr, E, n, 0.0001, dr)
+    call NumerovBackwards(psi_R, V, rgrid, nr, E, n, 0.0001, dr)
+
+    psi_L = psi_L / psi_L(x_m)
+    psi_R = psi_R / psi_R(x_m)
+   
+    do i=1,nr
+        if(rgrid(i) .le. x_m) then
+            psi(i) = psi_L(i)
+        else
+            psi(i) = psi_R(i)
+        end if 
+   end do
+
+   ! count the number of nodes
+   do i=2,nr
+       if(psi(i) >= 0 >= psi(i+1)) then
+           nodes = nodes + 1
+       elseif(psi(i) <= 0 <= psi(i+1))       
+           nodes = nodes + 1
+
+   end do
+
+   
+   
+   
+     
+
+
 
     open(unit=1, file="psi.txt", action="write")
     do i=1,nr
-        write(1, '(*(f8.4))') rgrid(i), psi_L(i), psi_R(i)
+        write(1, '(*(f12.4))') rgrid(i), psi_L(i), psi_R(i), psi(i)
     end do
     close(1)
+
 
 
 
