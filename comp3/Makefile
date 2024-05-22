@@ -11,4 +11,4 @@ main : NumerovsQHO.f90
 	$(FC) $(CFLAGS) NumerovsQHO.f90  -o NumerovsQHO
 
 clean :
-	rm main
+	rm NumerovsQHO

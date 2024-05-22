@@ -78,15 +78,16 @@ end subroutine NumerovBackwards
 program NumerovsQHO
     implicit none
 
-    integer :: i, j, nr
-    real*8 :: dr, rmax, E, E_min, E_max, n, x_m
+    integer :: i, j, nr, nodes, x_m
+    real*8 :: dr, rmax, E, E_min, E_max, n, cooley_correct, e_lim
 
     !ARRAY INITIALISATION
-    real*8, dimension(:), allocatable :: rgrid, V
+    real*8, dimension(:), allocatable :: rgrid, V, g
     real*8, dimension(:), allocatable :: psi_L, psi_R, psi    
 
-
-
+    ! some stuff for the while loops
+    logical :: pass_condition
+    
     
     !!Read in params
 
@@ -133,24 +134,14 @@ program NumerovsQHO
     end do
     close(1)
     
-    !Initial guess E, based on n
-    ! I find this a bit weird because we know the energies of the QHO exactly; En = (n+1/2)*w*h_bar
-    ! so considering that this is evenly spaced, my first energy is going to be around 0.5. 
-    ! my guesses for En; E_min = n and E_max = n+0.75 so that we can get the iteration scheme to work
-
-    E_min = n
-    E_max = n+0.75
-    E = (E_min + E_max)/2 
-
-       
-    ! combining left and right functions::
+    
     ! need to choose an x_m that is suitable. Looks like every second function is zero at zero. So for every second function ill displace 
     ! xm by some value to the right.
 
     if (mod(n,2.0) > 0 ) then
         !odd functions have a node at zero
         ! we actually want to reference an array element here for x_m so we can get the corresponding element of psi_~
-        x_m = int(nr/2 + 1/dr)
+        x_m = nr/2 + 1/dr
 
     else
         x_m = nr/2
@@ -158,36 +149,97 @@ program NumerovsQHO
     end if
     Print *, "x_m set to", x_m
  
-    !now we can combine the functions
-    
-    call NumerovForwards(psi_L, V, rgrid, nr, E, n, 0.0001, dr)
-    call NumerovBackwards(psi_R, V, rgrid, nr, E, n, 0.0001, dr)
 
-    psi_L = psi_L / psi_L(x_m)
-    psi_R = psi_R / psi_R(x_m)
+    !Initial guess E, based on n
+    ! I find this a bit weird because we know the energies of the QHO exactly; En = (n+1/2)*w*h_bar
+    ! so considering that this is evenly spaced, my first energy is going to be 0.5, the next 1.5 and so on
+    ! my guesses for En; E_min = n and E_max = n+0.75 so that we can get the iteration scheme to work
+
+    
+    E_min = n
+    E_max = n+0.75
+
+
+
+    !! what is going on here?
+    !! we actually use the method of bisections and the Numerov function to make initial guess
+    !! for E and 
+
+    pass_condition = .false.
+    do while(pass_condition .eqv. .false.)   
+ 
+        E = (E_min + E_max)/2        
+
+        call NumerovForwards(psi_L, V, rgrid, nr, E, n, 0.0001, dr)
+        call NumerovBackwards(psi_R, V, rgrid, nr, E, n, 0.0001, dr)
+
+        psi_L = psi_L / psi_L(x_m)
+        psi_R = psi_R / psi_R(x_m)
    
-    do i=1,nr
-        if(rgrid(i) .le. x_m) then
-            psi(i) = psi_L(i)
-        else
-            psi(i) = psi_R(i)
-        end if 
-   end do
+        do i=1,nr
+            if(rgrid(i) .le. x_m) then
+                psi(i) = psi_L(i)
+            else
+                psi(i) = psi_R(i)
+            end if 
+       end do
 
    ! count the number of nodes
-   do i=2,nr
-       if(psi(i) >= 0 >= psi(i+1)) then
-           nodes = nodes + 1
-       elseif(psi(i) <= 0 <= psi(i+1))       
-           nodes = nodes + 1
+       do i=1,nr-1
+           if(psi(i) < 0 .AND. 0 <= psi(i+1)) then
+               nodes = nodes + 1
+           elseif(psi(i) >= 0 .AND. 0 > psi(i+1)) then       
+               nodes = nodes + 1
+           end if
+       end do
+       Print *, nodes
+      
+       if(nodes==n) then
+           pass_condition = .true.
+       else if (nodes < n) then 
+           E_min = E
+       else if (nodes > n) then 
+           E_max = E
+       end if
+       
+       Print *, E
+
+   end do
+   
+   e_lim = 0.0001    
+   pass_condition = .false.
+   g = 2*(V-E)
+   do while(pass_condition .eqv. .false.)
+       
+       !compute numerov cooley
+      
+       ! there is a bug right here in the following line somewhere 
+       cooley_correct = (psi(x_m)/sum(psi**2)) * (-0.5 * ( (1.0- (dr**2/12.0)*g(x_m +1))*psi(x_m+1) - 2.0*( (1.0-(dr**2/12.0)*g(x_m))*psi(x_m)) + (1.0- (dr**2/12.0)*g(x_m-1))*psi(x_m-1))/dr**2 + (V(x_m)-E)*psi(x_m)  )
+       
+       if(abs(cooley_correct) <= e_lim ) then
+           pass_condition = .true.
+
+       else if (abs(cooley_correct) > e_lim) then
+           E = E + cooley_correct
+           call NumerovForwards(psi_L, V, rgrid, nr, E, n, 0.0001, dr)
+           call NumerovBackwards(psi_R, V, rgrid, nr, E, n, 0.0001, dr)
+ 
+       end if 
+       Print *, "Cooley Correction" 
+       Print *, cooley_correct
+
+       do i=1,nr
+            if(rgrid(i) .le. x_m) then
+                psi(i) = psi_L(i)
+            else
+                psi(i) = psi_R(i)
+            end if
+       end do
 
    end do
 
-   
-   
-   
-     
-
+   Print *, "Corrected Energy"
+   Print *, E
 
 
     open(unit=1, file="psi.txt", action="write")
