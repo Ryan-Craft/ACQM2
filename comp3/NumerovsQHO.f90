@@ -82,11 +82,12 @@ program NumerovsQHO
 
     integer*8 :: i, j, nr, nodes, x_m
     real*8 :: dr, rmax, E, E_min, E_max, n, cooley_correct, e_lim
-    real*8 :: fract, Yx, Yx1, Yxm1, Ecorr
+    real*8 :: fract, Yx, Yx1, Yxm1, Ecorr, norm
 
     !ARRAY INITIALISATION
     real*8, dimension(:), allocatable :: rgrid, V, g
     real*8, dimension(:), allocatable :: psi_L, psi_R, psi    
+    real*8, dimension(:), allocatable :: weights
 
     ! some stuff for the while loops
     logical :: pass_condition
@@ -106,9 +107,12 @@ program NumerovsQHO
     ! allocate wavefunction vectors
 
     nr = (2*rmax)/dr + 1
+    if (mod(nr,2) == 0) nr = nr + 1
+
 
     allocate(rgrid(nr))
     allocate(V(nr))
+    allocate(weights(nr))
     allocate(psi_L(nr), psi_R(nr), psi(nr))
     
     !set wavefunctions to initial zero
@@ -253,6 +257,21 @@ program NumerovsQHO
 
    end do
    
+
+   ! Normalise the wavefunction
+   
+   weights = 0.0d0
+   weights(1) = 1.0d0
+   do i=2, nr-1
+       weights(i) = 2.0d0 + 2.0d0*mod(i+1,2)
+   end do
+   weights(nr) = 1.0d0
+   weights(:) = weights(:)*dr/3.0d0     
+
+   norm = 1/sqrt(sum(psi(:)**2 * weights(:)))
+   Print *, norm
+
+   psi = psi*norm
 
 
     open(unit=1, file="psi.txt", action="write")
