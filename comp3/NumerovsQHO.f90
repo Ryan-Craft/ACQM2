@@ -82,7 +82,7 @@ program NumerovsQHO
 
     integer*8 :: i, j, nr, nodes, x_m
     real*8 :: dr, rmax, E, E_min, E_max, n, cooley_correct, e_lim
-    real*8 :: fract, Yx, Yx1, Yxm1
+    real*8 :: fract, Yx, Yx1, Yxm1, Ecorr
 
     !ARRAY INITIALISATION
     real*8, dimension(:), allocatable :: rgrid, V, g
@@ -210,26 +210,46 @@ program NumerovsQHO
 
    end do
 
-   e_lim = 0.0001
+   e_lim = 0.0000001
    pass_condition = .false.
+   Ecorr = E
    do while (pass_condition .eqv. .false.)
-       
-       g = 2*(V-E)
-       
+      
+       g = 2*(V-Ecorr) 
+       call NumerovForwards(psi_L, V, nr, Ecorr, n, 0.00001, dr)
+       call NumerovBackwards(psi_R, V, nr, Ecorr, n, 0.00001, dr)
+
+       psi_L = psi_L / psi_L(x_m)
+       psi_R = psi_R / psi_R(x_m)
+
+       do i=1,nr
+           if(i .le. x_m) then
+               psi(i) = psi_L(i)
+           else
+               psi(i) = psi_R(i)
+           end if
+       end do
+
+     
        Yx = (1-(dr**2/12)*g(x_m))*psi(x_m)
        Yx1 = (1-(dr**2/12)*g(x_m+1))*psi(x_m+1)
        Yxm1 = (1-(dr**2/12)*g(x_m-1))*psi(x_m-1)
        fract = (psi(x_m)/sum(psi**2))
 
-       cooley_correct = fract* ( -(0.5/dr**2)*(Yx1 - 2.0*Yx + Yxm1) + (V(x_m)-E)*psi(x_m)   )
+       cooley_correct = fract* ( -(0.5/dr**2)*(Yx1 - 2.0*Yx + Yxm1) + (V(x_m)-Ecorr)*psi(x_m)   )
 
-       if(abs(cooley_correct)>e_lim) then
-           E = E + cooley_correct            
+       if(abs(cooley_correct) > e_lim) then
+           Ecorr = Ecorr + cooley_correct
 
-       else if () then
-
+       else if (abs(cooley_correct) <= e_lim) then
+           pass_condition = .true.
        end if 
 
+
+       Print *, "cooley_correct:"
+       Print *, cooley_correct
+       Print *, "Corrected E"
+       Print *, Ecorr
 
    end do
    
