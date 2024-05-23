@@ -1,60 +1,60 @@
 
-subroutine NumerovForwards(psi_L, V, rgrid, nr, E, n, s, dr)
+subroutine NumerovForwards(psi_L, V, nr, E, n, s, dr)
 
     implicit none
     
     ! initialise local and inbound variables
-    integer :: i, j
+    integer*8 :: i, j
     real *8, intent(in) :: s, E, dr, n
-    integer, intent(in) :: nr
+    integer*8, intent(in) :: nr
     ! array init
 
-    real* 8, dimension(nr), intent(in) :: rgrid
     real* 8, dimension(nr), intent(in) :: V
     real* 8, dimension(nr):: psi_L
     real*8, dimension(nr) :: g
+    real*8 :: psi_ip1, psi_ip2, denom
 
 
     g = 2*(V-E)
     
-    do i=1,nr
-    !    Print *, g(i)
-    end do
-
-   
     ! for the recurrence relation we need to initialise two values of psi
     psi_L(1) = 0.0d0
     psi_L(2) = (-1)**n * s
+    Print *,  psi_L(2)
 
     ! this is essentially a recurrence relation like the Laguerre situation 
     do i=3,nr
-        psi_L(i) = ( 2*(1+(5*dr**2/12)*g(i-1))*psi_L(i-1) - (1 - (dr**2/12)*g(i-2))*psi_L(i-2) )  / (1 - (dr**2/12)*g(i))     
+        !psi_L(i) = ( 2*(1+(5*dr**2/12)*g(i-1))*psi_L(i-1) - (1 - (dr**2/12)*g(i-2))*psi_L(i-2) )  / (1 - (dr**2/12)*g(i))     
+    
+        denom = 1-(dr**2/12)*g(i)
+        psi_ip1 = (1 + (5*dr**2/12)*g(i-1) )*psi_L(i-1)
+        psi_ip2 = (1 - (dr**2/12)*g(i-2) )*psi_L(i-2)
+        psi_L(i) = (1/denom) * ( 2*psi_ip1 - psi_ip2)
+
     end do
-   
+    
+    Print *,  psi_L(2)   
 
 end subroutine NumerovForwards
 
-subroutine NumerovBackwards(psi_R, V, rgrid, nr, E, n, s, dr)
+subroutine NumerovBackwards(psi_R, V, nr, E, n, s, dr)
 
     implicit none
 
     ! initialise local and inbound variables
-    integer :: i, j
+    integer*8 :: i, j
     real *8, intent(in) :: s, E, dr, n
-    integer, intent(in) :: nr
+    integer*8, intent(in) :: nr
 
+    real*8 :: psi_ip1, psi_ip2, denom
+    
     ! array init
-
-    real* 8, dimension(nr), intent(in) :: rgrid
+ 
     real* 8, dimension(nr), intent(in) :: V
     real* 8, dimension(nr) :: psi_R
     real*8, dimension(nr) :: g
 
     g = 2*(V-E)
-
-    do i=1,nr
-     !   Print *, g(i)
-    end do
 
 
     ! for the recurrence relation we need to initialise two values of psi
@@ -62,24 +62,27 @@ subroutine NumerovBackwards(psi_R, V, rgrid, nr, E, n, s, dr)
     psi_R(nr-1) = s
 
     !numerov but hes backwards
-    do i= nr-2,1, -1 
-        psi_R(i) =  (psi_R(i+2)*(1-(dr**2/12)*g(i+2)) - 2*(1 + (5*dr**2 / 12)*g(i+1))*psi_R(i+1) )  / (1 - (dr**2/12)*g(i))
+    do i= nr-2,1,-1
+        denom = (1-((dr**2.0)/12.0)*g(i))
+        psi_ip1 = (1.0 + (5.0*(dr**2.0)/12.0)*g(i+1) )*psi_R(i+1)
+        psi_ip2 = (1.0 - ((dr**2.0)/12.0)*g(i+2) )*psi_R(i+2)
+    !    Print *, denom, psi_ip1, psi_ip2
+        psi_R(i) = (1.0/denom) * (2.0*psi_ip1-psi_ip2)
+
     end do 
     
-    psi_R = psi_R*(-1)
-
 
 
 end subroutine NumerovBackwards
 
 
 
-
 program NumerovsQHO
     implicit none
 
-    integer :: i, j, nr, nodes, x_m
+    integer*8 :: i, j, nr, nodes, x_m
     real*8 :: dr, rmax, E, E_min, E_max, n, cooley_correct, e_lim
+    real*8 :: fract, Yx, Yx1, Yxm1
 
     !ARRAY INITIALISATION
     real*8, dimension(:), allocatable :: rgrid, V, g
@@ -157,7 +160,7 @@ program NumerovsQHO
 
     
     E_min = n
-    E_max = n+0.75
+    E_max = n + 0.75
 
 
 
@@ -167,31 +170,32 @@ program NumerovsQHO
 
     pass_condition = .false.
     do while(pass_condition .eqv. .false.)   
- 
+        nodes = 0 
         E = (E_min + E_max)/2        
 
-        call NumerovForwards(psi_L, V, rgrid, nr, E, n, 0.0001, dr)
-        call NumerovBackwards(psi_R, V, rgrid, nr, E, n, 0.0001, dr)
+        call NumerovForwards(psi_L, V, nr, E, n, 0.00001, dr)
+        call NumerovBackwards(psi_R, V, nr, E, n, 0.00001, dr)
 
         psi_L = psi_L / psi_L(x_m)
         psi_R = psi_R / psi_R(x_m)
    
         do i=1,nr
-            if(rgrid(i) .le. x_m) then
+            if(i .le. x_m) then
                 psi(i) = psi_L(i)
-            else
+            else 
                 psi(i) = psi_R(i)
             end if 
        end do
 
    ! count the number of nodes
        do i=1,nr-1
-           if(psi(i) < 0 .AND. 0 <= psi(i+1)) then
+           if(psi(i) < 0 .AND. 0 < psi(i+1)) then
                nodes = nodes + 1
-           elseif(psi(i) >= 0 .AND. 0 > psi(i+1)) then       
+           elseif(psi(i) > 0 .AND. 0 > psi(i+1)) then       
                nodes = nodes + 1
            end if
        end do
+       Print *, "Number of Nodes"
        Print *, nodes
       
        if(nodes==n) then
@@ -201,55 +205,50 @@ program NumerovsQHO
        else if (nodes > n) then 
            E_max = E
        end if
-       
+       Print *, "Energy" 
        Print *, E
 
    end do
-   
-   e_lim = 0.0001    
+
+   e_lim = 0.0001
    pass_condition = .false.
-   g = 2*(V-E)
-   do while(pass_condition .eqv. .false.)
+   do while (pass_condition .eqv. .false.)
        
-       !compute numerov cooley
-      
-       ! there is a bug right here in the following line somewhere 
-       cooley_correct = (psi(x_m)/sum(psi**2)) * (-0.5 * ( (1.0- (dr**2/12.0)*g(x_m +1))*psi(x_m+1) - 2.0*( (1.0-(dr**2/12.0)*g(x_m))*psi(x_m)) + (1.0- (dr**2/12.0)*g(x_m-1))*psi(x_m-1))/dr**2 + (V(x_m)-E)*psi(x_m)  )
+       g = 2*(V-E)
        
-       if(abs(cooley_correct) <= e_lim ) then
-           pass_condition = .true.
+       Yx = (1-(dr**2/12)*g(x_m))*psi(x_m)
+       Yx1 = (1-(dr**2/12)*g(x_m+1))*psi(x_m+1)
+       Yxm1 = (1-(dr**2/12)*g(x_m-1))*psi(x_m-1)
+       fract = (psi(x_m)/sum(psi**2))
 
-       else if (abs(cooley_correct) > e_lim) then
-           E = E + cooley_correct
-           call NumerovForwards(psi_L, V, rgrid, nr, E, n, 0.0001, dr)
-           call NumerovBackwards(psi_R, V, rgrid, nr, E, n, 0.0001, dr)
- 
+       cooley_correct = fract* ( -(0.5/dr**2)*(Yx1 - 2.0*Yx + Yxm1) + (V(x_m)-E)*psi(x_m)   )
+
+       if(abs(cooley_correct)>e_lim) then
+           E = E + cooley_correct            
+
+       else if () then
+
        end if 
-       Print *, "Cooley Correction" 
-       Print *, cooley_correct
 
-       do i=1,nr
-            if(rgrid(i) .le. x_m) then
-                psi(i) = psi_L(i)
-            else
-                psi(i) = psi_R(i)
-            end if
-       end do
 
    end do
-
-   Print *, "Corrected Energy"
-   Print *, E
+   
 
 
     open(unit=1, file="psi.txt", action="write")
     do i=1,nr
-        write(1, '(*(f12.4))') rgrid(i), psi_L(i), psi_R(i), psi(i)
+        write(1, *) rgrid(i), psi_L(i), psi_R(i), psi(i)
     end do
     close(1)
 
 
 
+    g = 2*(V-E)
+    open(unit=1, file="g.txt", action="write")
+    do i=1,nr
+        write(1, '(*(f12.5))') rgrid(i), g(i)
+    end do
+    close(1)
 
 
 
