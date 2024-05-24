@@ -4,8 +4,8 @@ subroutine LaguerreSub(alpha, l, nr, N, rgrid, basis)
 
         ! initialise alpha, l, dr, rmax, N and others
         integer :: i
-        integer, intent(in) :: nr
-        integer, INTENT(IN) :: N
+        integer*8, intent(in) :: nr
+        integer*8, INTENT(IN) :: N
         real*8, INTENT(IN) :: alpha, l
         real*8, dimension(nr), INTENT(IN) :: rgrid
         real*8, dimension(nr,N) :: basis
@@ -29,7 +29,7 @@ program vibe
          real*8 :: alpha, l
          real*8 :: dr, rmax, mu
          integer*8 :: p
-         integer :: N, nr, ier
+         integer*8 :: N, nr, ier
          integer :: i,j
          real*8, dimension(:), allocatable :: rgrid
          real*8, dimension(:,:), allocatable :: basis
@@ -49,16 +49,17 @@ program vibe
          real*8, dimension(:,:), allocatable :: V_interp
 
          !an array to hold potential (called ssg but really could be any of them, big readability issue)
-         real*8, dimension(:,:), allocatable :: ssg
+         real*8, dimension(:,:), allocatable :: ssg, psu
          real*8, dimension(:), allocatable :: weights
          integer :: lines
  
          !!! We are going to need more declarations for our dissociative states now
-         real*8 :: Emax, dE 
-         real*8, dimension(:), allocatable :: g, psi_L, psi_R, psi, Ekgrid
-         real*8, dimension(:,:), allocatable :: Ekwf
-         integer :: nk
-
+         real*8 :: Emax, dE, E 
+         real*8, dimension(:), allocatable :: g, psi_L, psi_R, psi, Ekgrid, potent_Numerov
+         real*8, dimension(:,:), allocatable :: Ekwf, frank
+         integer, dimension(4) :: idx = [1,4,7,10]
+         integer*8 :: nk, x_m, nodes
+         logical :: pass_condition
 
          !open file location: hard coded for now but could become flexible
          !read stored values into relevent variables
@@ -78,6 +79,8 @@ program vibe
          allocate(psi_L(nr), psi_R(nr), psi(nr))
          allocate(Ekgrid(nk))
          allocate(Ekwf(nr,nk))
+         allocate(g(nr))
+         !allocate(potent_Numerov)
 
          ! based on options from file, allocate appropriate memory to rgrid and the basis array
          allocate(rgrid(nr))
@@ -91,7 +94,7 @@ program vibe
          allocate(wf(nr,N))
          allocate(V_interp(nr-1,2))
          allocate(weights(nr))
-         
+         allocate(potent_Numerov(nr)) 
          
 
          !allocate values to the rgrid: allows arbitrary size of PEC.1ssg, though its a bit clumsy
@@ -102,7 +105,7 @@ program vibe
          !read in PEC.1ssg potential into array: generalised in case we get bigger potentials later
                 ! check how many lines are in PEC.1ssg
          lines = 0
-         open(1, file='PEC_good/PEC.2psu', action='read')
+         open(1, file='PEC_good/PEC.1ssg', action='read')
          do
                 read(1,*, END=10)
                 lines = lines +1
@@ -113,11 +116,12 @@ program vibe
 
          allocate(ssg(lines, 2))
                 ! read in PEC
-         open(1, file='PEC_good/PEC.2psu', action='read')
+         open(1, file='PEC_good/PEC.1ssg', action='read')
          do i=1,lines
                 read(1,*), ssg(i,1), ssg(i,2)
          end do
          close(1)
+
 
          ! interpolate the electron potential:
          ! intrpl (number of data points, x array for input, yarray for input, number of points
@@ -233,26 +237,126 @@ program vibe
 
          !!! the code for vibe.f90 stopped here and deallocated everthing, but we have a few more things to do
          !!! all declarations are at the top, so we dont make a complete mess, but this section onwards is dedicated to 
-         !!! applying NUMEROVs iteration scheme to get the dissociative wavefunctions in the PEC.2psu potential. allocations start here
+         !!! applying NUMEROVs iteration scheme to get the dissociative wavefunctions in the PEC.2psu potential. 
 
 
          ! need to calculate nk; the number of steps along Ek (to make our Ek grid)
 
          Print *, "NUMEROV METHOD :::::"
          
+         Ekgrid = 0.0d0 
+         Ekwf = 0.0d0 
+         psi_L = 0.0d0 
+         psi_R =0.0d0 
+         psi=0.0d0
+         g = 0.0d0  
+
          do i=1,nk
              Ekgrid(i) = (i-1.0)*dE
          end do
          
          Print *, Ekgrid(:)
-
-
-         
-         
-
+         !!! CONVERT TO HARTREES
+         Ekgrid = Ekgrid
+ 
          
 
+         !for i in ekgrid
+             !call numerovForwards, and backwards
+             !match them up (choose a good xm using some kind of scheme)
+             ! normalise them 
+             ! send to file called something appropriate
+         lines = 0
+         open(1, file='PEC_good/PEC.2psu', action='read')
+         do
+                read(1,*, END=20)
+                lines = lines +1
+         end do
+         20 close(1)
 
+         Print *, "lines"
+         Print *, lines
+
+         allocate(psu(lines, 2))
+         open(1, file='PEC_good/PEC.2psu', action='read')
+         do i=1,lines
+                read(1,*), psu(i,1), psu(i,2)
+         end do
+         close(1)
+
+               
+         call intrpl(lines, psu(:,1), psu(:,2), nr, rgrid(:), potent_Numerov)
+ 
+         do i =1, nk
+             
+             E = Ekgrid(i)/27.21136 - 0.5             
+             g = 2*mu*(potent_Numerov - E)
+             
+             Print *, "G size"
+              
+             
+             call NumerovForwardsMu(psi_L, nr, 0, 0.0001, dr, mu, g)
+             
+             ! finding x_m
+             !do j=1,
+             j=nr
+             pass_condition = .false.
+             nodes=0
+             do while(pass_condition .eqv. .false.)
+                 
+                  if(psi_L(j) < 0 .AND. 0 < psi_L(j-1)) then
+                      nodes = nodes + 1
+                  elseif(psi_L(j) > 0 .AND. 0 > psi_L(j-1)) then
+                      nodes = nodes + 1
+                  end if
+                  Print *, "nodes"
+                  Print *, nodes
+
+                  if (nodes > 1) then
+                      pass_condition =.true. 
+                      Print *, "Index"
+                       
+                      psi_L = psi_L / maxval(abs(psi_L(j:nr)))
+ 
+                  endif
+
+             j = j-1
+             end do            
+
+ 
+             ! we can normalise here as well
+             normalise = sqrt(2*mu/(4.0d0*datan(1.d0)*sqrt(2*mu*Ekgrid(i)/27.21136)))
+             Print *, "NORMALISE:::", normalise
+             Ekwf(:,i) = psi_L(:) 
+
+         end do 
+
+         open(1, file='unboundout.txt', action='write')
+         do i =1,nr
+                         write(1, *) rgrid(i), Ekwf(i,:)
+         end do
+         close(1)         
+
+                  
+         ! okay now lets frank condon:
+
+         allocate(frank(nk,4))
+         Print *, size(Ekgrid(:)), size(frank(:,1))
+         do i=1,4
+             do j=1,nk
+                 if (j==1) then
+                     frank(j,i)=0.0d0                 
+                 else
+                     frank(j,i) = sum(weights(:)*Ekwf(:,j)*wf(:,idx(i)))**2
+                 end if
+             end do
+         end do  
+
+         open(1, file='condonout.txt', action='write')
+         do i =1,nk
+                         write(1, *) Ekgrid(i), frank(i,:)
+         end do
+         close(1)
 
 
 
@@ -278,8 +382,8 @@ program vibe
          deallocate(rgrid)
          deallocate(basis)
          if (N>1) then
-            !deallocate(Ekwf)
-            !deallocate(Ekgrid)
+            deallocate(Ekwf)
+            deallocate(Ekgrid)
             deallocate(H)
             deallocate(B)
             deallocate(V)

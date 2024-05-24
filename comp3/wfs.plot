@@ -1,13 +1,13 @@
 
 
-set yrange[-1:1]
-set xrange[0:70]
+set yrange[-0.6:1]
+set xrange[0:10]
 set key font ",12"
 set key top right
 
-scale=0.005
+scale=0.05
 
-set title "First Six H_2^+ Isotope Wavefunctions Inside the 1ssg Potential"
+set title "E_k = 5, 10, 15, 20 eV Dissociated H_2^+ Wavefunction"
 set title font ",12"
 set xlabel "Internuclear Separation (a_0)"
 set xlabel font ",12"
@@ -16,5 +16,5 @@ set ylabel font ",12"
 set tics font ",11"
 
 
-plot 'PEC_good/PEC.2psu' u 1:2 w line t "1ssg electron potential", 'boundwfout.txt' u 1:(scale*$2-0.600) w line t "ψ_1", 'boundwfout.txt' u 1:(scale*$3-0.594) w line t "ψ_2", 'boundwfout.txt' u 1:(scale*$4-0.588) w line t "ψ_3", 'boundwfout.txt' u 1:(scale*$5-0.582) w line t "ψ_4" 
+plot 'PEC_good/PEC.2psu' u 1:2 w line, "unboundout.txt" u 1:(scale*$3-0.316) w line t "Ek=5eV", "unboundout.txt" u 1:(scale*$4-0.1325) w line t "Ek=10eV", "unboundout.txt" u 1:(scale*$5+0.0512) w line t "Ek=15eV", "unboundout.txt" u 1:(scale*$5+0.235) w line t "Ek=20eV"
 

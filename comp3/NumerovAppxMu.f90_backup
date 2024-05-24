@@ -1,25 +1,25 @@
-subroutine NumerovForwardsMu(psi_L, nr, n, s, dr, mu, g)
+subroutine NumerovForwardsMu(psi_L, V, nr, E, n, s, dr, mu)
 
     implicit none
 
     ! initialise local and inbound variables
     integer*8 :: i, j
-    real *8, intent(in) :: s, dr, n, mu
+    real *8, intent(in) :: s, E, dr, n, mu
     integer*8, intent(in) :: nr
     ! array init
 
-!    real* 8, dimension(nr), intent(in) :: V
+    real* 8, dimension(nr), intent(in) :: V
     real* 8, dimension(nr):: psi_L
-    real*8, dimension(nr), intent(in) :: g
+    real*8, dimension(nr) :: g
     real*8 :: psi_ip1, psi_ip2, denom
+
+
+    g = 2*mu*(V-E)
 
     ! for the recurrence relation we need to initialise two values of psi
     psi_L(1) = 0.0d0
     psi_L(2) = (-1)**n * s
     Print *,  psi_L(2)
-    Print *, size(g), g(1), nr
-
-
 
     ! this is essentially a recurrence relation like the Laguerre situation
     do i=3,nr
@@ -36,22 +36,24 @@ subroutine NumerovForwardsMu(psi_L, nr, n, s, dr, mu, g)
 
 end subroutine NumerovForwardsMu
 
-subroutine NumerovBackwardsMu(psi_R, nr, s, dr, mu, g)
+subroutine NumerovBackwardsMu(psi_R, V, nr, E, n, s, dr, mu)
 
     implicit none
 
     ! initialise local and inbound variables
     integer*8 :: i, j
-    real *8, intent(in) :: s, dr, mu
+    real *8, intent(in) :: s, E, dr, n, mu
     integer*8, intent(in) :: nr
 
     real*8 :: psi_ip1, psi_ip2, denom
 
     ! array init
 
-    !real* 8, dimension(nr), intent(in) :: V
+    real* 8, dimension(nr), intent(in) :: V
     real* 8, dimension(nr) :: psi_R
-    real*8, dimension(nr), intent(in) :: g
+    real*8, dimension(nr) :: g
+
+    g = 2*mu*(V-E)
 
 
     ! for the recurrence relation we need to initialise two values of psi
