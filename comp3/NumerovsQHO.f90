@@ -214,7 +214,7 @@ program NumerovsQHO
 
    end do
 
-   e_lim = 1E-15
+   e_lim = 1E-10
    pass_condition = .false.
    Ecorr = E
    do while (pass_condition .eqv. .false.)
