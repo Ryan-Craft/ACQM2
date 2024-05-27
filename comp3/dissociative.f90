@@ -252,7 +252,7 @@ program vibe
          g = 0.0d0  
 
          do i=1,nk
-             Ekgrid(i) = (i-1.0)*dE
+             Ekgrid(i) = (i)*dE
          end do
          
          Print *, Ekgrid(:)
@@ -304,9 +304,9 @@ program vibe
              nodes=0
              do while(pass_condition .eqv. .false.)
                  
-                  if(psi_L(j) < 0 .AND. 0 < psi_L(j-1)) then
+                  if(psi_L(j) < 0 .AND. 0 <= psi_L(j-1)) then
                       nodes = nodes + 1
-                  elseif(psi_L(j) > 0 .AND. 0 > psi_L(j-1)) then
+                  elseif(psi_L(j) >= 0 .AND. 0 > psi_L(j-1)) then
                       nodes = nodes + 1
                   end if
                   Print *, "nodes"
@@ -327,7 +327,7 @@ program vibe
              ! we can normalise here as well
              normalise = sqrt(2*mu/(4.0d0*datan(1.d0)*sqrt(2*mu*Ekgrid(i)/27.21136)))
              Print *, "NORMALISE:::", normalise
-             Ekwf(:,i) = psi_L(:) 
+             Ekwf(:,i) = normalise * psi_L(:) 
 
          end do 
 
