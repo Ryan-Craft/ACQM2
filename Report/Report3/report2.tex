@@ -1,0 +1,474 @@
+\documentclass{article}
+\usepackage{graphicx, multicol} % Required for inserting images
+\usepackage{amsfonts,amssymb,amsmath,mathbbol,amsthm,amstext,esint,nccmath,upgreek}
+\usepackage{graphics,graphicx,epsfig, xcolor, soul}
+\usepackage[normalem]{ulem}
+\usepackage[margin={2cm,2cm}]{geometry}
+\usepackage{tikz,pgfplots, hyperref}
+\usepackage{siunitx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{physics}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage[american,siunitx]{circuitikz}
+\usepackage{caption}
+\usepackage{subcaption}
+\newcolumntype{M}[1]{>{\centering\arraybackslash}m{#1}}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=1.3}
+\renewcommand{\vec}[1]{\mathbf{#1}}
+\let\oldhat\hat
+\renewcommand{\hat}[1]{\oldhat{\mathbf{#1}}}
+
+\AtBeginDocument{
+\RenewCommandCopy\qty\SI
+\heavyrulewidth=.08em
+\lightrulewidth=.05em
+\cmidrulewidth=.03em
+\belowrulesep=.65ex
+\belowbottomsep=0pt
+\aboverulesep=.4ex
+\abovetopsep=0pt
+\cmidrulesep=\doublerulesep
+\cmidrulekern=.5em
+\defaultaddspace=.5em
+\parindent=0pt
+\parskip=6pt plus 2pt
+}
+\usepackage[authordate,natbib,maxcitenames=3]{biblatex-chicago}
+\addbibresource{bib2.bib}
+\setcounter{tocdepth}{5}
+\setcounter{secnumdepth}{5}
+\newcommand\simpleparagraph[1]{%
+	\stepcounter{paragraph}\paragraph*{\theparagraph\quad{}#1}}
+
+
+
+\begin{document}
+\noindent
+	\title{Computational Assignment 2: Solving Molecular Vibrational Wavefunctions}
+	\author{Ryan Craft}
+    \maketitle 
+    
+    I put all the code listings for this one at the end. Also, completed destroyed the commit history of the previous github, so the new repo is: \url{https://github.com/Ryan-Craft/ACQM2.git}, with these code snippets inside of \textit{comp3}. 
+    
+    \section{Problem 1: Quantum Harmonic Oscillator}
+    
+    \textit{Note: There is some kind of issue with dr=0.5 in the code now. Its quite happy to perform all the calculations at 0.1 or lower but gets stuck on 0.5. I did most of the tests before leaving and coming back to finish them of a week or so later, and while writing this report up have found this bug. I dont know if it was some subtle change I made that I forgot to write down or what, but I have other assessments that I need to finish off so my table for the convergence will have dr=0.1, 0.01, 0.001 instead so that I can still try and understand the trend. My bad.}
+    
+    Particles trapped in the harmonic potential
+    
+    \begin{gather}
+    	V(r) = \frac{1}{2} \omega^2 r^2
+    \end{gather}
+    
+    can be expressed with the Schrodinger equation in the ordinary way
+    
+    \begin{gather}
+    	\frac{1}{2}\frac{d^2}{d r^2} \psi(r) + V(r)\psi(r) = E\psi(r)
+    \end{gather}
+    
+    We can solve the schrodinger equation using finite difference through Numerovs method where 
+    
+    \begin{gather}
+    	\frac{d^2\psi(r)}{d r^2} = g(r)\psi(r)
+    \end{gather}
+    
+    Then set $g(r) = 2(V(r)-E)$, the discrete representation of the wavefunction can be given by the recurrence relation
+    \large
+    \begin{gather}
+    	\psi_{i+1} = \frac{2(1+\frac{5\delta x^2}{12}g_i)\psi_i - (1-\frac{\delta x^2}{12}g_{i-1})\psi_{i-1}}{1-\frac{\delta x^2}{12}g_{i+1}}
+    \end{gather}
+    \normalsize
+    The implementation of this iteration is both forwards and backwards, and has been defined in \ref{Forwards} and \ref{Backwards} respectively. This section is implemented in \textit{NumerovsQHO.f90}. 
+    
+    
+    This method requires that the energy of the wavefunction is known. In the QHO we know exactly the energy levels; $E_n = \hbar\omega(1/2 + n)$, but in this exercise the energy will be recursively determined recursively with the following procedure:
+    \begin{enumerate}
+    	\item Guess a pair of energies, $E_{min}$ and $E_{max}$
+    	\item Use $E = (E_{min} + E_{max})/2$
+    	\item apply Numerov approximation from the left and right side of the range of r
+    	\item count the number of nodes in the wavefunction
+    	\subitem if nodes $<$ n, $E_{min}=E$ and perform approximation again
+    	\subitem if nodes $>$ n, $E_{max}=E$ and perform approximation again
+    	\subitem if nodes $=$ n, E is in the ballpark of the true energy
+    \end{enumerate}
+    
+    This procedure is not accurately predicting the energy, rather its "narrowing it down" and forcing the wavefunction to have the right number of nodes, its implementation is seen in \ref{GuessE}.
+    
+    After each generation of the wavefunction via Numerov's method, a suitable midpoint is selected (one that has non-zero wavefunction), and the wavefunctions are divided by their value at the common midpoint, allowing them to be joined continuously there. The midpoint is labelled $x_m$ in the code. 
+    
+    The wavefunctions are joined at the midpoint, which should represent the wavefunction across the whole range of r values.
+    
+    When applying the Numerov approximation, we set the boundary conditions for the forwards and backwards version as $\psi = 0$ at either side of the r-axis and the elements $\psi_1 = s, \psi_{N-1}=s$. Where $s$ is some small value. I chose $s=0.0001$ as suggested.
+    
+    Once the correct number of nodes has been generated, the numerov forwards and backwards is applied again. This time after every generation, we apply the Cooley energy correction using the midpoint:
+    
+    \begin{gather}
+    	\Delta E \approx \frac{\psi_m}{\sum_{i=1}^{N}\abs{\psi_i}^2} \left[ -\frac{1}{2}\frac{Y_{m+1} - 2Y_{m} + Y_{m-1}}{\delta x^2} + (V_m - E)\psi_m \right]
+    \end{gather}
+    
+    The cooley correction is added to the energy and the wavefunction recalculated, this process is repeated until the cooley correction is smaller than some predetermined value. In this case $e_{lim} = 10^{-12}$ is the margin. The same midpoint corrections are made and single function is formed (see \ref{Cooley} for implementation).
+    
+    As this represents our final approximation to the wavefunction, it needs to be normalised.
+    The normalisation function for the wavefunction is 
+    \large
+    \begin{gather}
+    	\psi_{norm} = \frac{1}{\sqrt{\bra{\psi}\ket{\psi}}}\psi
+    \end{gather}
+    \normalsize
+    Normalisation is calculated as
+    \begin{lstlisting}[language=C]
+   	norm = 1/sqrt(sum(psi(:)**2 * weights(:)))
+   	Print *, norm
+   	psi = psi*norm
+    \end{lstlisting}
+    
+    Producing the wavefunction in this way gives the following outcomes for the energy levels n=0,1,2,3,4, the wavefunctions in the potential are illustrated in that order for figures \ref{n0} to \ref{n3}.
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.75]{Images/n0}
+    	\caption{n=0 QHO wavefunction analytical vs dr=0.5,0.1,0.01 grid spacing for the computational values.}
+    	\label{n0}
+    \end{figure}
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.75]{Images/n1}
+    	\caption{n=1 QHO wavefunction analytical vs dr=0.5,0.1,0.01 grid spacing for the computational values.}
+    	\label{n1}
+    \end{figure}
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.75]{Images/n2}
+    	\caption{n=2 QHO wavefunction analytical vs dr=0.5,0.1,0.01 grid spacing for the computational values.}
+    	\label{n2}
+    \end{figure}
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.9]{Images/n3}
+    	\caption{n=3 QHO wavefunction analytical vs dr=0.5,0.1,0.01 grid spacing for the computational values.}
+    	\label{n3}
+    \end{figure}
+    
+    The calculated energies of the wavefunctions for different energy levels and grid spacings are given in table \ref{table-n}
+    
+    \begin{table}[H]
+    	\centering
+    	\caption{Calculated energies for $e_{lim}=10^{-12}$, tested dr, and n=0-3. Given to same precision as the code to see small differences in the output. \label{table-n}}
+    	\begin{tabular}{llllc}
+    		\hline
+    		& dr=0.5 & dr=0.1 & dr=0.01 & Analytical \\ \hline
+    		\multicolumn{1}{l|}{n=0} & 0.49974711028260788 & 0.49999968333074568 & 0.50000000419848212 & 0.5\\
+    		\multicolumn{1}{l|}{n=1} & 1.4982089671345686 & 1.4999972647164823 & 1.4999999999057003 & 1.5\\
+    		\multicolumn{1}{l|}{n=2} & 2.4935052012437571 & 2.4999901984807384 & 2.4999999967839908 & 2.5\\
+    		\multicolumn{1}{l|}{n=3} & 3.4833258359458590 & 3.4999753371765463 & 3.4999999986659764 &  3.5\\ \hline
+    	\end{tabular}
+    \end{table}
+    
+    Examining table \ref{table-n} shows that the first energy level is accurate to the 4th decimal place, which for an relatively course grain grid of 0.5 seems reasonable.
+    Appreciable differences between the analytical and calculated values at the $dr=0.5$ level only begin to appear at the n=3 energy state. The same can be said for the figures. In figure \ref{n3} the wavefunctions don't line up in the asymptotic regions, meaning that the energy is deviating from the analytical value, and it can be seen somewhat that the values converge to the analytical function value as the grid spacing is decreased. 
+    
+    Also, the computed outputs are negative. This has been discussed in a previous report. Negative solutions to the schrodinger equation are equally valid solutions to the positive ones. 
+    
+    The $dr=0.5$ output wavefunctions are also plot extremely inaccurately with gnuplot due to the liner interpolation between data points. It is surprising how close the energies are reported considering how poorly it seems to fit the analytical solution.
+    
+    \begin{table}[H]
+    	\centering
+    	\caption{Calculated energies for $e_{lim}=10^{-12}$, tested dr, and n=0-3. Given to same precision as the code to see small differences in the output. \label{table-counter}}
+    	\begin{tabular}{lccc}
+    		\hline
+    		& dr=0.1 & dr=0.01 & dr=0.001  \\ \hline
+    		\multicolumn{1}{l|}{n=0} & 7 & 6 & 7 \\
+    		\multicolumn{1}{l|}{n=1} & 7 & 6 & 7  \\
+    		\multicolumn{1}{l|}{n=2} & 7 & 6 & 7  \\
+    		\multicolumn{1}{l|}{n=3} & 7 & 6 & 7  \\ \hline
+    	\end{tabular}
+    \end{table}
+    
+    Table \ref{table-counter} shows the number of node recounts + Cooley corrections before reaching convergence, ie cooleys correction was less than the limit set. Out of these, it was expected that the node counting would take more steps, but in fact it seems that the node counding for the first four levels takes only one step, which seems to indicate that the initial guess and numerov approximation begins immediately with the correct form. 
+    
+    Then the cooley corrections seem to take very little time. They reach the limit very fast, within usually 5 steps. It was noted that limits below $10^{-15}$ would tend to cause the loop to go infinitely, as the energy correction seemed to be only accurate down to that level, so it would never report below a certain threshold. Even so, the accuracy gets very high.
+    
+    \subsection{Problem 2: Dissociative Wavefunctions}
+   
+    Dissociation wavefunctions of the $H_2^+$ molecule have an energy $E= E_k + D$, where $D$ is the energy of the potential energy curve created by the electron. In this case the $D=\epsilon(\infty)$, which is -0.5 Hartrees. $E_k$ represents the kinetic energy of the proton released from the molecule. Our Schrodinger equation we want to solve is:
+    
+    \large
+    \begin{gather}
+    	\left[ -\frac{1}{2\mu}\frac{d^2}{dR^2} + \epsilon(R) - E \right]\nu(R) = 0
+    \end{gather}
+    \normalsize
+    
+    In the asymptotic limit, the free particle will have plane wave solutions and a normalisation coefficient $\sqrt{(2\mu/k\pi)}$, where $k=\sqrt{(2\mu E_k)}$. Before this normalisation factor is applied, the waves in the asymptotic region are given unit amplitude, so that the normalisation gives them the correct asymptotic amplitude.
+   
+    The dissociation event we investigate is the result of the electronic transition from the 1ssg state to the 2psu state. This change in potential causes immediately dissociation of the molecule because the 2psu potential has no bound wavefunctions. 
+    
+    Using the code from previous assignments, the 1ssg and 2psu states were read in and the cross section as a function of the kinetic energy release is calculated.
+    The code calculated the bound states in the 1ssg potential and their overlap with the free particles in the 2psu state using the Frank Condon Approximation:
+    
+    \begin{gather}
+    	\frac{d\sigma_{f,iv_i}}{dE_k} \approx \abs{\bra{v_{f E_k}}\ket{v_{iv_i}}}^2
+    \end{gather}
+    
+    The Frank-Condon approximation is calculated numerically. 
+    
+    The first few dissociative wavefunctions and their energies are on figure \ref{dissociatedWaves}.
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.8]{Images/dissociatedWaves}
+    	\caption{4 dissociated waves in the 2psu potential. Note that they all become continuum waves when far enough away from the potential.}
+    	\label{dissociatedWaves}
+    \end{figure}
+    
+    The above figure is relatively intuitive even if the position on the y axis of the wavefunctions doesn't change, because the wavelength is shorter for higher energies. That is to be expected for the particles De Broglie wavelength as energy increases.
+    
+    The KER distribution is given below.
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.75]{Images/FCplot}
+    	\caption{Kinetic Energy Release distribution using the Frank-Condon Approximation.}
+    	\label{KER}
+    \end{figure}
+	
+	
+	In the KER the distribution of kinetic energy is released based on different vibrational states is observed. The ground state vibrational mode has a gaussian appearance almost, with a relatively limited energy range. Curiously it seems that as the vibrational state increases, the more likely it is for the energy release to be smaller, but at the same time the probability of releases at high energy is present where it is not for the ground state.
+	
+	The KER was calculated with a modified version of previous code. Please look at the github in \textit{dissociative.f90} towards the end for the main edits. 
+	They are a little too lengthy for me to place inside a code listing. However, th subroutine \textit{NumerovAppxMu.f90} is not and the forwards version which is implemented in that code is given in section \ref{Muforwrads}.
+	
+\pagebreak
+    \section{Code Listings}
+    \subsection{Forwards Numerov}
+    \begin{lstlisting}[language=C, label=Forwards]
+    	
+    subroutine NumerovForwards(psi_L, V, nr, E, n, s, dr)
+    
+    implicit none
+    
+    ! initialise local and inbound variables
+    integer*8 :: i, j
+    real *8, intent(in) :: s, E, dr, n
+    integer*8, intent(in) :: nr
+    ! array init
+    
+    real* 8, dimension(nr), intent(in) :: V
+    real* 8, dimension(nr):: psi_L
+    real*8, dimension(nr) :: g
+    real*8 :: psi_ip1, psi_ip2, denom
+    
+    g = 2*(V-E)
+    
+    ! for the recurrence relation we need to initialise two values of psi
+    psi_L(1) = 0.0d0
+    psi_L(2) = (-1)**n * s
+    Print *,  psi_L(2)
+    
+    ! this is essentially a recurrence relation like the Laguerre situation
+    do i=3,nr
+    denom = 1-(dr**2/12)*g(i)
+    psi_ip1 = (1 + (5*dr**2/12)*g(i-1) )*psi_L(i-1)
+    psi_ip2 = (1 - (dr**2/12)*g(i-2) )*psi_L(i-2)
+    psi_L(i) = (1/denom) * ( 2*psi_ip1 - psi_ip2)
+    
+    end do
+    
+    end subroutine NumerovForwards
+    	
+    \end{lstlisting}
+    \subsection{Backwards Numerov}
+    \begin{lstlisting}[language=C, label=Backwards]
+    	
+    subroutine NumerovBackwards(psi_R, V, nr, E, n, s, dr)
+    
+    implicit none
+    
+    ! initialise local and inbound variables
+    integer*8 :: i, j
+    real *8, intent(in) :: s, E, dr, n
+    integer*8, intent(in) :: nr
+    
+    real*8 :: psi_ip1, psi_ip2, denom
+    
+    ! array init
+    
+    real* 8, dimension(nr), intent(in) :: V
+    real* 8, dimension(nr) :: psi_R
+    real*8, dimension(nr) :: g
+    
+    g = 2*(V-E)
+    
+    
+    ! for the recurrence relation we need to initialise two values of psi
+    psi_R(nr) = 0.0d0
+    psi_R(nr-1) = s
+    
+    !numerov but hes backwards
+    do i= nr-2,1,-1
+    denom = (1-((dr**2.0)/12.0)*g(i))
+    psi_ip1 = (1.0 + (5.0*(dr**2.0)/12.0)*g(i+1) )*psi_R(i+1)
+    psi_ip2 = (1.0 - ((dr**2.0)/12.0)*g(i+2) )*psi_R(i+2)
+    psi_R(i) = (1.0/denom) * (2.0*psi_ip1-psi_ip2)
+    
+    end do
+    end subroutine NumerovBackwards
+    	
+    \end{lstlisting}
+    
+    \subsection{Node Counting and E Guess}
+    \begin{lstlisting}[language=C, label=GuessE]
+    E_min = n
+    E_max = n + 0.75
+    
+    pass_condition = .false.
+    do while(pass_condition .eqv. .false.)
+	    nodes = 0
+	    E = (E_min + E_max)/2
+	    
+	    call NumerovForwards(psi_L, V, nr, E, n, 0.00001, dr)
+	    call NumerovBackwards(psi_R, V, nr, E, n, 0.00001, dr)
+	    
+	    psi_L = psi_L / psi_L(x_m)
+	    psi_R = psi_R / psi_R(x_m)
+	    
+	    do i=1,nr
+		    if(i .le. x_m) then
+			    psi(i) = psi_L(i)
+		    else
+			    psi(i) = psi_R(i)
+		    end if
+    	end do
+    	
+    	do i=1,nr-1
+	    	if(psi(i) < 0 .AND. 0 < psi(i+1)) then
+		    	nodes = nodes + 1
+	    	elseif(psi(i) > 0 .AND. 0 > psi(i+1)) then
+		    	nodes = nodes + 1
+	    	end if
+    	end do
+    	Print *, "Number of Nodes"
+    	Print *, nodes
+    	
+    	if(nodes==n) then
+	    	pass_condition = .true.
+    	else if (nodes < n) then
+	    	E_min = E
+    	else if (nodes > n) then
+	    	E_max = E
+    	end if
+    	Print *, "Energy"
+    	Print *, E
+    	
+    end do
+    	
+    \end{lstlisting}
+    
+    \subsection{Cooley's Energy Correction}
+    \begin{lstlisting}[language=C, label=Cooley]
+e_lim = 1E-10
+pass_condition = .false.
+Ecorr = E
+do while (pass_condition .eqv. .false.)
+
+ g = 2*(V-Ecorr)
+ call NumerovForwards(psi_L, V, nr, Ecorr, n, 0.00001, dr)
+ call NumerovBackwards(psi_R, V, nr, Ecorr, n, 0.00001, dr)
+ 
+ psi_L = psi_L / psi_L(x_m)
+ psi_R = psi_R / psi_R(x_m)
+ 
+ do i=1,nr
+  if(i .le. x_m) then
+	    	psi(i) = psi_L(i)
+  else
+	    	psi(i) = psi_R(i)
+  end if
+ end do
+ 
+ 
+ Yx = (1-(dr**2/12)*g(x_m))*psi(x_m)
+ Yx1 = (1-(dr**2/12)*g(x_m+1))*psi(x_m+1)
+ Yxm1 = (1-(dr**2/12)*g(x_m-1))*psi(x_m-1)
+ fract = (psi(x_m)/sum(psi**2))
+ 
+ cooley_correct = fract* ( -(0.5/dr**2)*(Yx1 - 2.0*Yx + Yxm1) + (V(x_m)-Ecorr)*psi(x_m))
+ 
+ if(abs(cooley_correct) > e_lim) then
+    	Ecorr = Ecorr + cooley_correct
+ else if (abs(cooley_correct) <= e_lim) then
+    	pass_condition = .true.
+ end if
+ 
+ 
+ Print *, "cooley_correct:"
+ Print *, cooley_correct
+ Print *, "Corrected E"
+ Print *, Ecorr
+
+end do
+    	
+    \end{lstlisting}
+    
+   \subsection{Numerov Subroutine for dissociative.f90}
+   \begin{lstlisting}[language=C, label=Muforwrads]
+   	subroutine NumerovForwardsMu(psi_L, nr, n, s, dr, mu, g)
+   	
+	   	implicit none
+	   	
+	   	! initialise local and inbound variables
+	   	integer*8 :: i, j
+	   	real *8, intent(in) :: s, dr, n, mu
+	   	integer*8, intent(in) :: nr
+	   	! array init
+	   	
+	   	!    real* 8, dimension(nr), intent(in) :: V
+	   	real* 8, dimension(nr):: psi_L
+	   	real*8, dimension(nr), intent(in) :: g
+	   	real*8 :: psi_ip1, psi_ip2, denom
+	   	
+	   	! for the recurrence relation we need to initialise two values of psi
+	   	psi_L(1) = 0.0d0
+	   	psi_L(2) = (-1)**n * s
+	   	Print *,  psi_L(2)
+	   	Print *, size(g), g(1), nr
+	   	
+	   	
+	   	
+	   	! this is essentially a recurrence relation like the Laguerre situation
+	   	do i=3,nr
+	   	
+		   	denom = 1-(dr**2/12)*g(i)
+		   	psi_ip1 = (1 + (5*dr**2/12)*g(i-1) )*psi_L(i-1)
+		   	psi_ip2 = (1 - (dr**2/12)*g(i-2) )*psi_L(i-2)
+		   	psi_L(i) = (1/denom) * ( 2*psi_ip1 - psi_ip2)
+	   	
+	   	end do
+	   	
+	   	Print *,  psi_L(2)
+   	
+   	end subroutine NumerovForwardsMu
+   \end{lstlisting}
+    
+
+	
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
