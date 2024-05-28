@@ -80,7 +80,7 @@ end subroutine NumerovBackwards
 program NumerovsQHO
     implicit none
 
-    integer*8 :: i, j, nr, nodes, x_m
+    integer*8 :: i, j, nr, nodes, x_m, counter
     real*8 :: dr, rmax, E, E_min, E_max, n, cooley_correct, e_lim
     real*8 :: fract, Yx, Yx1, Yxm1, Ecorr, norm
 
@@ -173,6 +173,7 @@ program NumerovsQHO
     !! for E and 
 
     pass_condition = .false.
+
     do while(pass_condition .eqv. .false.)   
         nodes = 0 
         E = (E_min + E_max)/2        
@@ -214,10 +215,12 @@ program NumerovsQHO
 
    end do
 
-   e_lim = 1E-10
+   e_lim = 1E-12
    pass_condition = .false.
    Ecorr = E
+   counter =0
    do while (pass_condition .eqv. .false.)
+   counter = counter + 1
       
        g = 2*(V-Ecorr) 
        call NumerovForwards(psi_L, V, nr, Ecorr, n, 0.00001, dr)
@@ -247,6 +250,9 @@ program NumerovsQHO
 
        else if (abs(cooley_correct) <= e_lim) then
            pass_condition = .true.
+       else if (cooley_correct /= cooley_correct) then
+           pass_condition = .true.
+           Print *, "Cooley Correction Probably NaN"
        end if 
 
 
@@ -254,7 +260,7 @@ program NumerovsQHO
        Print *, cooley_correct
        Print *, "Corrected E"
        Print *, Ecorr
-
+       Print *," Iterations ::: ", counter
    end do
    
 
