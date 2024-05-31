@@ -99,10 +99,22 @@ program main
     Print *, "RGRID and RWEIGHTS" 
     Print *, rgrid(1:5)
     Print *, rweights(1:5)
-
+    
+    
 
   
   !>>> define short-range potential V(r)
+!RC: I am also writing this potential to file because, A: im probably going to want to plot with it
+!                                                      B: I want to inspect it so I know its not broken
+!RC: I checked it, it looks how youd expect.
+  open(1, file="Scattering-Potential.txt", action="write")
+  do i=1,nrmax
+    V(i) = zproj*(1.0d0+(1.0d0/rgrid(i)))*exp(-2.0d0*rgrid(i))
+    write(1, *) rgrid(i), V(i)
+  end do
+  close(1)
+  
+
 
   !begin loop over angular momenta
   do l=lmin, lmax
@@ -192,7 +204,7 @@ subroutine setup_rgrid(nrmax, dr, rgrid, rweights)
   do ir =1,nrmax
     rweights(ir) = 4.0d0 - 2.0d0*mod(ir+1,2)
   end do
-  
+  rweights = rweights * dr / 3.0d0
 
 
 end subroutine setup_rgrid
