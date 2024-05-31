@@ -42,8 +42,10 @@ program main
     iounit,     & !a unit number for input/ouput
     ntheta,     & !an index to iterate over theta
     nthetamax,  & !max number of theta
-    kg_Na, kg_Nb, kg_Np !some more parameters for setting up kgrid
-  
+    kg_Na, kg_Nb, kg_Np, &!some more parameters for setting up kgrid
+    i, j !RC: I need some iteration params so they are going here as well
+
+
   !set kgrid parameters - leave this as is
     kg_Na = 30; kg_Nb = 30; kg_Np = 10
     kg_a = 0.85; kg_b = 2.5; kg_p = 4.0
@@ -53,14 +55,34 @@ program main
   !    note: energy should be read in electron volts
   !      and grid parameters in atomic units
 
+!RC: I have read in the energy directly as eV, which is what it is in the data.in file I presume
+    open(1, file="data.in", action="read")
+    read(1,*) energy, rmax, dr, zproj, lmin, lmax
+    Print *, "INPUT PARAMS FROM data.in::"
+    Print *, energy, rmax, dr, zproj, lmin, lmax
+    close(1)
+
   !>>> do any input validation you think is necessary here
+!RC: might come back to this
+
 
   !>>> convert the energy to atomic units and calculate the
   !      projectile momentum
+    energy = energy/eV
+    k = sqrt(energy*2)
+
+
 
   !>>> determine number of rgrid points nrmax
   !    note: nrmax should be even for simpson's integration
   !          to take into account that the r=0 point has been omitted 
+
+!RC: for the values of dr and rmax in the data.in, this is an even number, so we follow the rules on the 
+!    lecture slides for creating the rgrid
+    nrmax = rmax/dr
+    Print *, nrmax 
+
+
 
   !allocate memory
     allocate(rgrid(nrmax),rweights(nrmax))
@@ -73,6 +95,12 @@ program main
   !setup grids
     call setup_rgrid(nrmax, dr, rgrid, rweights)
     call setup_kgrid(k, nkmax, kg_Na, kg_a, kg_Nb, kg_b, kg_Np, kg_p, kgrid, kweights)
+
+    Print *, "RGRID and RWEIGHTS" 
+    Print *, rgrid(1:5)
+    Print *, rweights(1:5)
+
+
   
   !>>> define short-range potential V(r)
 
@@ -154,6 +182,18 @@ subroutine setup_rgrid(nrmax, dr, rgrid, rweights)
   !      - note we have neglected the terms with a coefficient of 1 (rather than 4 or 2) since
   !        the first term (r=0) is skipped and the last term corresponds to the end of the
   !        radial grid where we assume all functions should be zero (and if not the grid is not large enough)
+
+  do ir=1, nrmax
+    rgrid(ir) = ir*dr    
+    !RC: started at dr instead of 0
+  end do
+  
+  rweights = 0.0d0
+  do ir =1,nrmax
+    rweights(ir) = 4.0d0 - 2.0d0*mod(ir+1,2)
+  end do
+  
+
 
 end subroutine setup_rgrid
 
