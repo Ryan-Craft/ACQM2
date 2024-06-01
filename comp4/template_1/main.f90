@@ -104,8 +104,8 @@ program main
     Print *, rgrid(1:5)
     Print *, rweights(1:5)
     Print *, "KGRID FIRST 5 ELEMENTS and the end one ::"
-    Print *, kgrid(1:6), kgrid(nkmax) 
-    
+    Print *, kgrid(1:6), kgrid(nkmax)
+    Print *, "KGRID SIZE ::", size(kgrid)  
 
   
   !>>> define short-range potential V(r)
@@ -124,7 +124,7 @@ program main
   !begin loop over angular momenta
   do l=lmin, lmax
     !populate contwaves matrix with a continuum wave for each off-shell k
-!RC: needs to be implemented
+!RC: implemented but all cont waves normalised to unity
       contwaves = 0.0d0
       call setup_contwaves(nkmax,kgrid,l,nrmax,rgrid,contwaves)
  
@@ -247,7 +247,7 @@ subroutine setup_contwaves(nkmax, kgrid, l, nrmax, rgrid, contwaves)
 
       if (nodes > 1) then
         pass_condition =.true.
-        Print *, "Index"
+        !Print *, "Index"
         contwaves(nk,:) = contwaves(nk,:) / maxval(abs(contwaves(nk,nr:nrmax)))
       endif
 
@@ -264,10 +264,10 @@ subroutine setup_contwaves(nkmax, kgrid, l, nrmax, rgrid, contwaves)
   Print *, contwaves(2,1:5)
   Print *, contwaves(3,1:5)
 
-  Print *, "Writing NumerovContWaves.txt, contains rgrid, first continuum wave and sin(kr)" 
+  Print *, "Writing Numerovl0vsSin.txt, contains rgrid, first continuum wave and sin(kr)" 
   open(1, file="Numerovl0vsSin.txt", action="write")
   do nr=1,nrmax
-    write(1, *) rgrid(nr), contwaves(100,nr), sin(kgrid(1)*rgrid(nr))
+    write(1, *) rgrid(nr), contwaves(20,nr), sin(kgrid(20)*rgrid(nr))
   end do
   close(1)
 
@@ -300,8 +300,8 @@ subroutine NumerovForwards(nrmax, rgrid, nkmax, kval, psi, g, l)
 
     psi(1) = (rgrid(1)*kval)**(l+1) / dfactorial !RC : because of page 72 of the lectures
     psi(2) = (rgrid(2)*kval)**(l+1) / dfactorial
-    Print *, "NUMEROV LEFT BOUNDARY ::"
-    Print *, psi(1), psi(2)
+    !Print *, "NUMEROV LEFT BOUNDARY ::"
+    !Print *, psi(1), psi(2)
 
     do i=3, nrmax 
         denom = 1-(dr**2/12)*g(i)
@@ -309,10 +309,6 @@ subroutine NumerovForwards(nrmax, rgrid, nkmax, kval, psi, g, l)
         psi_ip2 = (1 - (dr**2/12)*g(i-2) )*psi(i-2)
         psi(i) = (1/denom) * ( 2*psi_ip1 - psi_ip2)
     end do
-
-    
-    
-
 end subroutine NumerovForwards
 
 
@@ -328,6 +324,26 @@ subroutine calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
   !>>> evaluate the V-matrix elements and store in the Vmat matrix
   !    note: the V-matrix is symmetric, make use of this fact to reduce the 
   !          amount of time spent in this subroutine
+  nkf=0.0d0
+  do nkf =1, nkmax
+    do nki =nkf,nkmax
+      
+      Vmat(nkf,nki) = (2/pi)*sum(contwaves(nkf,:)*V(:)*contwaves(nki,:)*rweights(:))
+      Vmat(nki,nkf) = Vmat(nkf,nki) 
+    end do
+  end do
+  Print *, "V Matrix top left corner ::"
+  Print *, Vmat(1,1:4)
+  Print *, Vmat(2,1:4)
+  Print *, Vmat(3,1:4)
+  Print *, Vmat(4,1:4)
+
+
+
+
+
+
+
 
 end subroutine calculate_Vmatrix
     
