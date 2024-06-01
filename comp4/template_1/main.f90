@@ -72,7 +72,8 @@ program main
   !      projectile momentum
     energy = energy/eV
     k = sqrt(energy*2)
-
+    Print *, "Energy in Hartrees"
+    Print*, energy
 
 
   !>>> determine number of rgrid points nrmax
@@ -102,8 +103,8 @@ program main
     Print *, "RGRID and RWEIGHTS" 
     Print *, rgrid(1:5)
     Print *, rweights(1:5)
-    Print *, "KGRID FIRST 6 ELEMENTS ::"
-    Print *, kgrid(1:6) 
+    Print *, "KGRID FIRST 5 ELEMENTS and the end one ::"
+    Print *, kgrid(1:6), kgrid(nkmax) 
     
 
   
@@ -124,6 +125,7 @@ program main
   do l=lmin, lmax
     !populate contwaves matrix with a continuum wave for each off-shell k
 !RC: needs to be implemented
+      contwaves = 0.0d0
       call setup_contwaves(nkmax,kgrid,l,nrmax,rgrid,contwaves)
  
     !evaluate the V-matrix elements  
@@ -221,20 +223,53 @@ subroutine setup_contwaves(nkmax, kgrid, l, nrmax, rgrid, contwaves)
   real*8, intent(out) :: contwaves(nkmax,nrmax)
   real*8 :: ncontwaves(nkmax,nrmax)
   real*8 :: g(nrmax) ! RC: I added this one
-  integer :: nk, nr !indices to loop over k and r
+  integer :: nk, nr, nodes !indices to loop over k and r
   real*8 :: E
-  
+  logical :: pass_condition 
   !>>> iterate over k, populating the contwaves matrix                                 
 !RC : We need to use forwards numerov to get the continuum waves
 
-  !do i=1,nkmax
-   !   g = 2*( l*(l+1)/(2*rgrid**2)  -kgrid(i)**2/2  )
-    !  do j=1,nrmax
-
-     ! end do
-
-  !end do
+  do nk=1,nkmax
+      E = kgrid(nk)**2/2
+      g = 2*( l*(l+1)/(2*rgrid**2)  - E)
+      call NumerovForwards(nrmax, rgrid, nkmax, kgrid(nk), contwaves(nk,:), g, l) 
   
+    
+    nr=nrmax
+    pass_condition = .false.
+    nodes=0
+    do while(pass_condition .eqv. .false.)
+      if(contwaves(nk,nr) < 0 .AND. 0 <= contwaves(nk,nr-1)) then
+        nodes = nodes + 1
+      elseif(contwaves(nk,nr) >= 0 .AND. 0 > contwaves(nk,nr-1)) then
+        nodes = nodes + 1
+      end if 
+
+      if (nodes > 1) then
+        pass_condition =.true.
+        Print *, "Index"
+        contwaves(nk,:) = contwaves(nk,:) / maxval(abs(contwaves(nk,nr:nrmax)))
+      endif
+
+      nr = nr-1
+    end do 
+  end do
+
+  
+   
+! These need to made unit valued at their asymptotic region and then normalised
+
+
+  Print *, contwaves(1,1:5)
+  Print *, contwaves(2,1:5)
+  Print *, contwaves(3,1:5)
+
+  Print *, "Writing NumerovContWaves.txt, contains rgrid, first continuum wave and sin(kr)" 
+  open(1, file="Numerovl0vsSin.txt", action="write")
+  do nr=1,nrmax
+    write(1, *) rgrid(nr), contwaves(100,nr), sin(kgrid(1)*rgrid(nr))
+  end do
+  close(1)
 
 
 
@@ -243,32 +278,32 @@ end subroutine setup_contwaves
 
    
 !>>> your forwards Numerov subroutine can go here
-subroutine NumerovForwards(nrmax, rgrid, psi, g, l)
+subroutine NumerovForwards(nrmax, rgrid, nkmax, kval, psi, g, l)
     implicit none 
-    integer :: i, j
-    integer, intent(in) :: nrmax, l
-    real*8, intent(in) :: g(nrmax), rgrid(nrmax) 
+    integer, intent(in) :: nrmax, l, nkmax
+    real*8, intent(in) :: g(nrmax), rgrid(nrmax), kval 
     real*8, intent(inout):: psi(nrmax)
-    real*8 :: psi_ip1, psi_ip2, denom, s, dr
-    integer*8 :: dfactorial
+    real*8 :: psi_ip1, psi_ip2, denom, dr
+    integer*8 :: dfactorial, i, j ! RC : High precision integers becaues of the factorial
 
     dr = rgrid(1)
-    s = 1E-4
 
 !RC : Well we need to make a code to calculate a double factorial now
-
     dfactorial=1
-    do i= 
+    do i = 2*(l+1), 0, -2
+        if(i==0 .or. i==1) then
+              dfactorial=dfactorial
+        else
+            dfactorial = dfactorial * i
+        end if
+    end do
 
-
-
-    psi(1) = 0.0d0
-    psi(2) = s
+    psi(1) = (rgrid(1)*kval)**(l+1) / dfactorial !RC : because of page 72 of the lectures
+    psi(2) = (rgrid(2)*kval)**(l+1) / dfactorial
     Print *, "NUMEROV LEFT BOUNDARY ::"
     Print *, psi(1), psi(2)
 
-    do i=3, nrmax
-        
+    do i=3, nrmax 
         denom = 1-(dr**2/12)*g(i)
         psi_ip1 = (1 + (5*dr**2/12)*g(i-1) )*psi(i-1)
         psi_ip2 = (1 - (dr**2/12)*g(i-2) )*psi(i-2)
