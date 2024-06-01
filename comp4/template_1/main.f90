@@ -22,7 +22,7 @@ program main
     contwaves(:,:),  & !projectile radial continuum waves contwaves(k,r)
     DCS(:),          & !array to hold differential cross section - DCS(theta)
     theta(:),        & !array to hold values of theta - in degrees
-    ICS(:),          &  !integrated cross section per l
+    ICS(:),          & !integrated cross section per l
     psi(:)             !defined so that numerov has a temp vector to work with
 
 
@@ -129,10 +129,25 @@ program main
       call setup_contwaves(nkmax,kgrid,l,nrmax,rgrid,contwaves)
  
     !evaluate the V-matrix elements  
+!RC :: Implemented, checking now. Checked it, looks pretty good
       call calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
+      
+      open(1, file="Vmat-halfonshell.txt", action="write")
+      do i=1,nkmax
+        write(1, *) kgrid(i), Vmat(i,1)
+      end do
+      close(1)
+
+
+
 
     !solve the Lippman-Schwinger equation for the on-shell T-matrix
+!RC ::     
       call tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton(l))
+
+
+
+
   enddo
 
   !populate theta - theta = 0, 1,..., 180 degrees
@@ -338,13 +353,6 @@ subroutine calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
   Print *, Vmat(3,1:4)
   Print *, Vmat(4,1:4)
 
-
-
-
-
-
-
-
 end subroutine calculate_Vmatrix
     
 subroutine tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton)
@@ -353,28 +361,55 @@ subroutine tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton)
   integer, intent(in) :: nkmax
   real*8, intent(in) :: kgrid(nkmax), kweights(nkmax), Vmat(nkmax,nkmax)
   complex*16, intent(out) :: Ton !on-shell T-matrix element
+  complex*16 :: denom
   real*8 :: &
     Koff(nkmax-1), & !half-off-shell K-matrix elements
     Kon,           & !on-shell K-matrix element
     Von,           & !on-shell V-matrix element
     A(nkmax-1,nkmax-1) !Coefficient matrix for the linear system Ax=b
-  integer :: j, ipiv(nkmax-1), info
+  integer :: f,n,j, ipiv(nkmax-1), info
 
   !>>> store the on-shell V-matrix element in Von
+  Von = Vmat(1,1)
 
   !>>> populate the matrix A according to Eq (142) in the slides
-  
+ 
+  do f=1, nkmax-1
+    do n=1, nkmax-1
+      if(f==n) then
+        A(f,n) = 1 - kweights(n+1)*Vmat(f+1,n+1)
+      else
+        A(f,n) = - kweights(n+1)*Vmat(f+1,n+1)
+      end if
+    end do
+  end do
+
+ 
   !>>> populate the vector Koff with the half-on-shell V-matrix elements (RHS of Eq (141)) 
+  do n=1, nkmax-1
+    Koff(n) = Vmat(n+1,1) 
+  end do
  
   !Here is the call to DGESV
-  call dgesv( nkmax-1, 1, A, nkmax-1, ipiv, Koff, nkmax-1, info )
+  call dgesv(nkmax-1, 1, A, nkmax-1, ipiv, Koff, nkmax-1, info )
   if(info /= 0) then
     print*, 'ERROR in dgesv: info = ', info
   endif
 
   !>>> Now use the half-on-shell K matrix which has been stored in Koff to get the on-shell K-matrix element Kon
+  
+  Kon = Vmat(1,1) + sum(kweights*Koff*Vmat(2:,1))
  
   !>>> And then use Kon to get the on-shell T-matrix element Ton
+  
+! RC :: POSSIBLE BUG !!!!!! idk what k_f was, page 110 says the magnitudes of ki and kf are the same so... is it just ki???
+  denom = complex(1, (pi/kgrid(1))*Kon)
+
+  Ton = Kon/denom
+ 
+  Print *, "Complex declaration :::"
+  Print *, "Kon", Kon
+  Print *, Ton
 
 end subroutine tmatrix_solver
 
