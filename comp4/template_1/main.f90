@@ -22,7 +22,9 @@ program main
     contwaves(:,:),  & !projectile radial continuum waves contwaves(k,r)
     DCS(:),          & !array to hold differential cross section - DCS(theta)
     theta(:),        & !array to hold values of theta - in degrees
-    ICS(:)             !integrated cross section per l
+    ICS(:),          &  !integrated cross section per l
+    psi(:)             !defined so that numerov has a temp vector to work with
+
 
   real*8 :: &
     rmax,   & !max value of radial grid
@@ -91,6 +93,7 @@ program main
     allocate(V(nrmax))
     allocate(Ton(lmin:lmax),ICS(lmin:lmax))
     allocate(Vmat(nkmax,nkmax))
+    allocate(psi(nrmax))
 
   !setup grids
     call setup_rgrid(nrmax, dr, rgrid, rweights)
@@ -99,7 +102,8 @@ program main
     Print *, "RGRID and RWEIGHTS" 
     Print *, rgrid(1:5)
     Print *, rweights(1:5)
-    
+    Print *, "KGRID FIRST 6 ELEMENTS ::"
+    Print *, kgrid(1:6) 
     
 
   
@@ -119,8 +123,9 @@ program main
   !begin loop over angular momenta
   do l=lmin, lmax
     !populate contwaves matrix with a continuum wave for each off-shell k
+!RC: needs to be implemented
       call setup_contwaves(nkmax,kgrid,l,nrmax,rgrid,contwaves)
-    
+ 
     !evaluate the V-matrix elements  
       call calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
 
@@ -215,16 +220,65 @@ subroutine setup_contwaves(nkmax, kgrid, l, nrmax, rgrid, contwaves)
   real*8, intent(in) :: kgrid(nkmax), rgrid(nrmax)
   real*8, intent(out) :: contwaves(nkmax,nrmax)
   real*8 :: ncontwaves(nkmax,nrmax)
+  real*8 :: g(nrmax) ! RC: I added this one
   integer :: nk, nr !indices to loop over k and r
   real*8 :: E
   
   !>>> iterate over k, populating the contwaves matrix                                 
+!RC : We need to use forwards numerov to get the continuum waves
+
+  !do i=1,nkmax
+   !   g = 2*( l*(l+1)/(2*rgrid**2)  -kgrid(i)**2/2  )
+    !  do j=1,nrmax
+
+     ! end do
+
+  !end do
+  
+
+
+
 
 end subroutine setup_contwaves
 
    
 !>>> your forwards Numerov subroutine can go here
+subroutine NumerovForwards(nrmax, rgrid, psi, g, l)
+    implicit none 
+    integer :: i, j
+    integer, intent(in) :: nrmax, l
+    real*8, intent(in) :: g(nrmax), rgrid(nrmax) 
+    real*8, intent(inout):: psi(nrmax)
+    real*8 :: psi_ip1, psi_ip2, denom, s, dr
+    integer*8 :: dfactorial
 
+    dr = rgrid(1)
+    s = 1E-4
+
+!RC : Well we need to make a code to calculate a double factorial now
+
+    dfactorial=1
+    do i= 
+
+
+
+    psi(1) = 0.0d0
+    psi(2) = s
+    Print *, "NUMEROV LEFT BOUNDARY ::"
+    Print *, psi(1), psi(2)
+
+    do i=3, nrmax
+        
+        denom = 1-(dr**2/12)*g(i)
+        psi_ip1 = (1 + (5*dr**2/12)*g(i-1) )*psi(i-1)
+        psi_ip2 = (1 - (dr**2/12)*g(i-2) )*psi(i-2)
+        psi(i) = (1/denom) * ( 2*psi_ip1 - psi_ip2)
+    end do
+
+    
+    
+
+end subroutine NumerovForwards
 
 
 
