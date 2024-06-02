@@ -1,15 +1,16 @@
 #!/bin/bash
 
 
-energies=($(seq 5 2.5 50))
+energies=($(seq 5.0 2.0 9.0))
 
 echo ${energies[*]}
 for i in ${!energies[@]}
-do  
-  cd "energiesfolder"
-  mkdir energy=energy_${energies[$i]}
+do 
+   
+  mkdir "energy_${energies[$i]}"
+  sed s/EEEE/${energies[$i]}/g data.in > "energy_${energies[$i]}"/data.in
   cd "energy_${energies[$i]}"  
-  echo ${energies[$i]} >> proout_${energies[$i]}.txt
+  ../main
   cd ..
 
 done
