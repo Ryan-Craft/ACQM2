@@ -9,7 +9,7 @@ CFLAGS := -fopenmp   #(gfortran)
 #CFLAGS := -qopenmp   #(ifort)
 
 #UNCOMMENT THE BELOW FOR DEBUGGING:
-#CFLAGS := $(CFLAGS) -g -Og -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow   #(gfortran)
+CFLAGS := $(CFLAGS) -g -Og -fcheck=all -fbacktrace -ffpe-trap=invalid,zero,overflow   #(gfortran)
 #CFLAGS := $(CFLAGS) -g -O0 -debug extended -check all -traceback -ftrapuv   	       #(ifort)
 
 main : constants.o dgesv.o main.o kgrid_igor.o iqpackd.o plql.o

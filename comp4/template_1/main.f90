@@ -159,6 +159,7 @@ program main
   enddo
 
   !call subroutines to calculate DCS and ICS
+! RC :: DCS is implemented!
     call compute_dcs(nthetamax, theta, lmin, lmax, Ton, k, DCS)
     call compute_ics(lmin, lmax, Ton, k, ICS)
 
@@ -190,15 +191,34 @@ subroutine compute_dcs(nthetamax, theta, lmin, lmax, Ton, k, DCS)
   complex*16, intent(in) :: Ton(0:lmax)
   real*8, intent(out) :: DCS(nthetamax)
   integer :: l, ntheta !loop indices
-  real*8:: PL !Legendre polynomials - from file plql.f
+  real*8:: PL, PLval!Legendre polynomials - from file plql.f
   real*8 :: costheta !use this to store cos(theta in radians)
   complex*16 :: f(nthetamax) !scattering amplitude
 
   !>>> calculate the scattering amplitude f(theta) for each theta
   !    by iterating over l and using the partial-wave
   !    expansion of f
+! RC :: I'll do this using the equation 115 of the lecture slides
+  f = 0.0d0
+  do ntheta=1,nthetamax
+    do l=lmin,lmax
+       costheta = cos(theta(ntheta) * (pi/180))
+       f(ntheta) = f(ntheta) + (-pi/k**2) * (2*l+1) * Ton(l) * PL(l, costheta)
+    end do
+  end do
+
 
   !>>> obtain the DCS from the scattering amplitude
+! RC :: DCS is obtained by eqn 117, remember to do the complex conjugate, so exploit the abs functions complex arguments
+
+  DCS = abs(f)**2
+
+  open(1, file="DCSout.txt", action="write")
+  do ntheta=1,nthetamax
+    write(1, *) theta(ntheta), DCS(ntheta)
+  end do
+  close(1) 
+
 
 end subroutine compute_dcs
 
