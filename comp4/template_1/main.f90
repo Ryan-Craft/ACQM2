@@ -144,19 +144,10 @@ program main
       end do
       close(1)
 
-      open(1, file="threefuns.txt", action="write")
-      do i=1,nrmax
-        write(1, *) rgrid(i), V(i), contwaves(2,i)
-      end do
-      close(1)
-
 
     !solve the Lippman-Schwinger equation for the on-shell T-matrix
 !RC ::     
       call tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton(l))
-
-
-
 
   enddo
 
@@ -259,8 +250,6 @@ subroutine setup_contwaves(nkmax, kgrid, l, nrmax, rgrid, contwaves)
       g = 2*( l*(l+1)/(2*rgrid**2)  - E)
       call NumerovForwards(nrmax, rgrid, nkmax, kgrid(nk), contwaves(nk,:), g, l) 
   end do
-
-  
    
 ! These need to made unit valued at their asymptotic region and then normalised
 
@@ -296,18 +285,18 @@ subroutine NumerovForwards(nrmax, rgrid, nkmax, kval, psi, g, l)
 !RC : Well we need to make a code to calculate a double factorial now
     dfactorial=1
     do i = (2*l+1), 0, -2
-        if(i==0 .or. i==1) then
+        if(i==0 .or. i==1 .or. i<0) then
               dfactorial=dfactorial
         else
             dfactorial = dfactorial * i
         end if
     end do
-    Print *, "Factorial, l", dfactorial, i
+    !Print *, "Factorial, l", dfactorial, i
 
     psi(1) = (rgrid(1)*kval)**(l+1) / dfactorial !RC : because of page 72 of the lectures
     psi(2) = (rgrid(2)*kval)**(l+1) / dfactorial
-    Print *, "NUMEROV LEFT BOUNDARY ::"
-    Print *, psi(1), psi(2)
+    !Print *, "NUMEROV LEFT BOUNDARY ::"
+    !Print *, psi(1), psi(2)
 
     do i=3, nrmax 
         denom = 1-(dr**2/12)*g(i)
@@ -388,7 +377,7 @@ subroutine tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton)
 
   !>>> Now use the half-on-shell K matrix which has been stored in Koff to get the on-shell K-matrix element Kon
   
-  Kon = Vmat(1,1) + sum(kweights*Koff*Vmat(2:,1))
+  Kon = Vmat(1,1) + sum(kweights(2:)*Vmat(1,2:)*Koff)
  
   !>>> And then use Kon to get the on-shell T-matrix element Ton
   

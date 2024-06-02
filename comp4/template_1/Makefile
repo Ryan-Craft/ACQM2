@@ -5,7 +5,7 @@ FC := gfortran
 #FC := ifort 
 
 #UNCOMMENT THE BELOW IF YOU IMPLEMENT OPENMP
-#CFLAGS := -fopenmp   #(gfortran)
+CFLAGS := -fopenmp   #(gfortran)
 #CFLAGS := -qopenmp   #(ifort)
 
 #UNCOMMENT THE BELOW FOR DEBUGGING:
