@@ -167,6 +167,18 @@ program main
   !    to easily study the convergence you can write the ics to file as a function of l
   !    along with a running total so that the running total in the final line is your
   !    total ICS summed over l
+  open(1, file="DCSout.txt", action="write")
+  do ntheta=1,nthetamax
+    write(1, *) theta(ntheta), DCS(ntheta)
+  end do
+  close(1)
+  
+  open(1, file="ICSout.txt", action="write")
+  do l=lmin,lmax
+    write(1, *) ICS(l), sum(ICS(lmin:l))
+  end do
+  close(1)
+
 
 
 end program main
@@ -181,6 +193,13 @@ subroutine compute_ics(lmin, lmax, Ton, k, ICS)
   integer :: l
 
   !>>> populate the ICS array with the partial-wave ICS per l
+
+  do l=lmin,lmax
+    ICS(l) = (4*pi**3 / k**4) * (2*l+1) * abs(Ton(l))**2
+  end do
+
+
+
 end subroutine compute_ics
 
 subroutine compute_dcs(nthetamax, theta, lmin, lmax, Ton, k, DCS)
@@ -212,13 +231,6 @@ subroutine compute_dcs(nthetamax, theta, lmin, lmax, Ton, k, DCS)
 ! RC :: DCS is obtained by eqn 117, remember to do the complex conjugate, so exploit the abs functions complex arguments
 
   DCS = abs(f)**2
-
-  open(1, file="DCSout.txt", action="write")
-  do ntheta=1,nthetamax
-    write(1, *) theta(ntheta), DCS(ntheta)
-  end do
-  close(1) 
-
 
 end subroutine compute_dcs
 
