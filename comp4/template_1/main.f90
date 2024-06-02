@@ -95,6 +95,12 @@ program main
     allocate(Ton(lmin:lmax),ICS(lmin:lmax))
     allocate(Vmat(nkmax,nkmax))
     allocate(psi(nrmax))
+  
+    V = 0.0d0
+    Ton = 0.0d0
+    Vmat = 0.0d0
+    psi = 0.0d0
+    contwaves = 0.0d0
 
   !setup grids
     call setup_rgrid(nrmax, dr, rgrid, rweights)
@@ -138,7 +144,11 @@ program main
       end do
       close(1)
 
-
+      open(1, file="threefuns.txt", action="write")
+      do i=1,nrmax
+        write(1, *) rgrid(i), V(i), contwaves(2,i)
+      end do
+      close(1)
 
 
     !solve the Lippman-Schwinger equation for the on-shell T-matrix
@@ -248,26 +258,6 @@ subroutine setup_contwaves(nkmax, kgrid, l, nrmax, rgrid, contwaves)
       E = kgrid(nk)**2/2
       g = 2*( l*(l+1)/(2*rgrid**2)  - E)
       call NumerovForwards(nrmax, rgrid, nkmax, kgrid(nk), contwaves(nk,:), g, l) 
-  
-    
-    nr=nrmax
-    pass_condition = .false.
-    nodes=0
-    do while(pass_condition .eqv. .false.)
-      if(contwaves(nk,nr) < 0 .AND. 0 <= contwaves(nk,nr-1)) then
-        nodes = nodes + 1
-      elseif(contwaves(nk,nr) >= 0 .AND. 0 > contwaves(nk,nr-1)) then
-        nodes = nodes + 1
-      end if 
-
-      if (nodes > 1) then
-        pass_condition =.true.
-        !Print *, "Index"
-        contwaves(nk,:) = contwaves(nk,:) / maxval(abs(contwaves(nk,nr:nrmax)))
-      endif
-
-      nr = nr-1
-    end do 
   end do
 
   
@@ -282,7 +272,7 @@ subroutine setup_contwaves(nkmax, kgrid, l, nrmax, rgrid, contwaves)
   Print *, "Writing Numerovl0vsSin.txt, contains rgrid, first continuum wave and sin(kr)" 
   open(1, file="Numerovl0vsSin.txt", action="write")
   do nr=1,nrmax
-    write(1, *) rgrid(nr), contwaves(20,nr), sin(kgrid(20)*rgrid(nr))
+    write(1, *) rgrid(nr), contwaves(3,nr), sin(kgrid(3)*rgrid(nr))
   end do
   close(1)
 
@@ -305,18 +295,19 @@ subroutine NumerovForwards(nrmax, rgrid, nkmax, kval, psi, g, l)
 
 !RC : Well we need to make a code to calculate a double factorial now
     dfactorial=1
-    do i = 2*(l+1), 0, -2
+    do i = (2*l+1), 0, -2
         if(i==0 .or. i==1) then
               dfactorial=dfactorial
         else
             dfactorial = dfactorial * i
         end if
     end do
+    Print *, "Factorial, l", dfactorial, i
 
     psi(1) = (rgrid(1)*kval)**(l+1) / dfactorial !RC : because of page 72 of the lectures
     psi(2) = (rgrid(2)*kval)**(l+1) / dfactorial
-    !Print *, "NUMEROV LEFT BOUNDARY ::"
-    !Print *, psi(1), psi(2)
+    Print *, "NUMEROV LEFT BOUNDARY ::"
+    Print *, psi(1), psi(2)
 
     do i=3, nrmax 
         denom = 1-(dr**2/12)*g(i)
@@ -334,17 +325,16 @@ subroutine calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
   integer, intent(in) :: nkmax, nrmax
   real*8, intent(in) :: kgrid(nkmax), contwaves(nkmax,nrmax), rgrid(nrmax), rweights(nrmax), V(nrmax)
   real*8, intent(out) :: Vmat(nkmax,nkmax)
-  integer :: nkf,nki !indices for looping over on- and off-shell k
+  integer :: nkf,nki, i !indices for looping over on- and off-shell k
 
   !>>> evaluate the V-matrix elements and store in the Vmat matrix
   !    note: the V-matrix is symmetric, make use of this fact to reduce the 
   !          amount of time spent in this subroutine
-  nkf=0.0d0
+  Vmat=0.0d0
   do nkf =1, nkmax
     do nki =nkf,nkmax
-      
       Vmat(nkf,nki) = (2/pi)*sum(contwaves(nkf,:)*V(:)*contwaves(nki,:)*rweights(:))
-      Vmat(nki,nkf) = Vmat(nkf,nki) 
+      Vmat(nki,nkf) = Vmat(nkf,nki)
     end do
   end do
   Print *, "V Matrix top left corner ::"
