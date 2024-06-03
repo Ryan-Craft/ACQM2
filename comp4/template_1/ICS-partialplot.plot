@@ -8,7 +8,7 @@ set tics font ",11"
 set xlabel font ",12"
 set ylabel font ",12"
 
-set title "Partial Integrated Cross Section (a_0^2) for Given l \nvs Incident Electron Energy (eV)"
+set title "Partial Integrated Cross Section (a_0^2) for Given l \nvs Incident Positron Energy (eV)"
 
 set format y "10^{%T}"
 set lmargin 10

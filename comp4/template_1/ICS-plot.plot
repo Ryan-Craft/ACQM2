@@ -8,7 +8,7 @@ set tics font ",12"
 set xlabel font ",12"
 set ylabel font ",12"
 
-set title "Integrated Cross Section (a_0^2) vs Incident Electron Energy (eV)\n for Different Sums of l_{max}"
+set title "Integrated Cross Section (a_0^2) vs Incident Positron Energy (eV)\n for Different Sums of l_{max}"
 
 set xlabel "Incident Energy eV"
 set ylabel "Integrated Cross Section (a_0^2)"
