@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.9.2)  28 MAY 2024 11:54
+This is pdfTeX, Version 3.141592653-2.6-1.40.24 (TeX Live 2022) (preloaded format=pdflatex 2022.9.2)  30 MAY 2024 15:05
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -1471,114 +1471,100 @@ LaTeX Font Info:    Trying to load font information for U+esint on input line 5
 
 (c:/texlive/2022/texmf-dist/tex/latex/esint/uesint.fd
 File: uesint.fd 
-) [2]
+)
+(c:/texlive/2022/texmf-dist/tex/latex/listings/lstlang1.sty
+File: lstlang1.sty 2020/03/24 1.8d listings language file
+)
+(c:/texlive/2022/texmf-dist/tex/latex/listings/lstlang1.sty
+File: lstlang1.sty 2020/03/24 1.8d listings language file
+)
+LaTeX Font Info:    Trying to load font information for OML+cmr on input line 6
+8.
+
+(c:/texlive/2022/texmf-dist/tex/latex/base/omlcmr.fd
+File: omlcmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
+)
+LaTeX Font Info:    Font shape `OML/cmr/m/n' in size <10> not available
+(Font)              Font shape `OML/cmm/m/it' tried instead on input line 68.
+LaTeX Font Info:    Trying to load font information for OMS+cmr on input line 7
+3.
+
+(c:/texlive/2022/texmf-dist/tex/latex/base/omscmr.fd
+File: omscmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
+)
+LaTeX Font Info:    Font shape `OMS/cmr/m/n' in size <10> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 73.
+LaTeX Font Info:    Font shape `OMS/cmr/m/it' in size <10> not available
+(Font)              Font shape `OMS/cmsy/m/n' tried instead on input line 75.
+ [2]
 (c:/texlive/2022/texmf-dist/tex/latex/listings/lstlang1.sty
 File: lstlang1.sty 2020/03/24 1.8d listings language file
 )
 (c:/texlive/2022/texmf-dist/tex/latex/listings/lstmisc.sty
 File: lstmisc.sty 2020/03/24 1.8d (Carsten Heinz)
-)
-<Images/n0.png, id=78, 481.8pt x 361.35pt>
-File: Images/n0.png Graphic file (type png)
-<use Images/n0.png>
-Package pdftex.def Info: Images/n0.png  used on input line 134.
-(pdftex.def)             Requested size: 361.3491pt x 271.01184pt.
- [3]
-<Images/n1.png, id=98, 481.8pt x 361.35pt>
-File: Images/n1.png Graphic file (type png)
-<use Images/n1.png>
-Package pdftex.def Info: Images/n1.png  used on input line 141.
-(pdftex.def)             Requested size: 361.3491pt x 271.01184pt.
-<Images/n2.png, id=99, 481.8pt x 361.35pt>
-File: Images/n2.png Graphic file (type png)
-<use Images/n2.png>
-Package pdftex.def Info: Images/n2.png  used on input line 148.
-(pdftex.def)             Requested size: 361.3491pt x 271.01184pt.
- [4 <./Images/n0.png (PNG copy)> <./Images/n1.png (PNG copy)>]
-<Images/n3.png, id=105, 481.8pt x 361.35pt>
-File: Images/n3.png Graphic file (type png)
-<use Images/n3.png>
-Package pdftex.def Info: Images/n3.png  used on input line 155.
-(pdftex.def)             Requested size: 433.61598pt x 325.21199pt.
- [5 <./Images/n2.png (PNG copy)> <./Images/n3.png (PNG copy)>] [6]
-<Images/dissociatedWaves.png, id=123, 481.8pt x 361.35pt>
-File: Images/dissociatedWaves.png Graphic file (type png)
-<use Images/dissociatedWaves.png>
-Package pdftex.def Info: Images/dissociatedWaves.png  used on input line 226.
-(pdftex.def)             Requested size: 385.4405pt x 289.0804pt.
-<Images/FCplot.png, id=124, 709.90219pt x 465.23813pt>
-File: Images/FCplot.png Graphic file (type png)
-<use Images/FCplot.png>
-Package pdftex.def Info: Images/FCplot.png  used on input line 237.
-(pdftex.def)             Requested size: 532.42534pt x 348.92773pt.
-
-Overfull \hbox (31.94135pt too wide) in paragraph at lines 237--238
- [][] 
- []
-
-[7 <./Images/dissociatedWaves.png (PNG copy)>] [8 <./Images/FCplot.png (PNG cop
-y)>] [9]
-LaTeX Font Info:    Trying to load font information for OML+cmr on input line 3
-51.
- (c:/texlive/2022/texmf-dist/tex/latex/base/omlcmr.fd
-File: omlcmr.fd 2019/12/16 v2.5j Standard LaTeX font definitions
-)
-LaTeX Font Info:    Font shape `OML/cmr/m/n' in size <10> not available
-(Font)              Font shape `OML/cmm/m/it' tried instead on input line 351.
- [10]
-Overfull \hbox (27.52138pt too wide) in paragraph at lines 402--404
+) [3]
+Overfull \hbox (111.52223pt too wide) in paragraph at lines 186--187
 [][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][
-][] 
- []
-
-[11]
-Overfull \hbox (9.5212pt too wide) in paragraph at lines 437--438
-[][][][][][][][][][][][][][][][][][][][][][][][][][][][][] 
+][][][][][] 
  []
 
 
-Overfull \hbox (21.52132pt too wide) in paragraph at lines 445--446
-[][][][][][][][][][][][][][][][][][][][][][][][][] 
+Overfull \hbox (105.52217pt too wide) in paragraph at lines 195--196
+[][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][][] 
  []
 
-[12] (./report2.aux)
+
+LaTeX Warning: Reference `' on page 4 undefined on input line 203.
+
+
+LaTeX Warning: File `Images/1_plot.png' not found on input line 207.
+
+
+! Package pdftex.def Error: File `Images/1_plot.png' not found: using draft set
+ting.
+
+See the pdftex.def package documentation for explanation.
+Type  H <return>  for immediate help.
+ ...                                              
+                                                  
+l.207     	\includegraphics{Images/1_plot.png}
+                                              [scale=1]
+Try typing  <return>  to proceed.
+If that doesn't work, type  X <return>  to quit.
+
+[4] (./report2.aux)
+
+LaTeX Warning: There were undefined references.
+
 Package rerunfilecheck Info: File `report2.out' has not changed.
-(rerunfilecheck)             Checksum: 85AEED4F9FD5D0F43DB4E787ACAC3484;1540.
+(rerunfilecheck)             Checksum: C94B520547D85BFAC7490076A5C59E16;511.
 Package logreq Info: Writing requests to 'report2.run.xml'.
 \openout1 = `report2.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 65724 strings out of 475075
- 1608908 string characters out of 5783002
- 3072527 words of memory out of 5000000
- 86135 multiletter control sequences out of 15000+600000
- 481434 words of font info for 81 fonts, out of 8000000 for 9000
+ 65604 strings out of 475075
+ 1607067 string characters out of 5783002
+ 3057126 words of memory out of 5000000
+ 86153 multiletter control sequences out of 15000+600000
+ 481672 words of font info for 82 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 84i,13n,80p,723b,3947s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 84i,6n,80p,723b,3947s stack positions out of 10000i,1000n,20000p,200000b,200000s
 {c:/texlive/2022/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}<c:/tex
 live/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/texlive/2022
 /texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb><c:/texlive/2022/texmf-di
-st/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/texlive/2022/texmf-dist/fonts/
-type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/pub
-lic/amsfonts/cm/cmmi12.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfo
-nts/cm/cmmi5.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmm
-i7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb><c:
-/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2
-022/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><c:/texlive/2022/texmf-
-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb><c:/texlive/2022/texmf-dist/fonts
-/type1/public/amsfonts/cm/cmr6.pfb><c:/texlive/2022/texmf-dist/fonts/type1/publ
-ic/amsfonts/cm/cmr7.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts
-/cm/cmr8.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.
-pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb><c:/te
-xlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/texlive/2022
-/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb><c:/texlive/2022/texmf-di
-st/fonts/type1/public/amsfonts/symbols/msbm10.pfb><c:/texlive/2022/texmf-dist/f
-onts/type1/public/cm-super/sfrm1000.pfb>
-Output written on report2.pdf (12 pages, 580541 bytes).
+st/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/texlive/2022/texmf-dist/fonts/
+type1/public/amsfonts/cm/cmr10.pfb><c:/texlive/2022/texmf-dist/fonts/type1/publ
+ic/amsfonts/cm/cmr12.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfont
+s/cm/cmr17.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy1
+0.pfb><c:/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmti10.pfb><c:
+/texlive/2022/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb><c:/texlive/
+2022/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb><c:/texlive/2022/texmf
+-dist/fonts/type1/public/cm-super/sfti1000.pfb>
+Output written on report2.pdf (4 pages, 143787 bytes).
 PDF statistics:
- 484 PDF objects out of 1000 (max. 8388607)
- 419 compressed objects within 5 object streams
- 237 named destinations out of 1000 (max. 500000)
- 107 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 197 PDF objects out of 1000 (max. 8388607)
+ 167 compressed objects within 2 object streams
+ 82 named destinations out of 1000 (max. 500000)
+ 53 words of extra memory for PDF output out of 10000 (max. 10000000)
 
