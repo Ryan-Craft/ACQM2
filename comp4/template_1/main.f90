@@ -74,7 +74,7 @@ program main
     k = sqrt(energy*2)
     Print *, "Energy in Hartrees"
     Print*, energy
-
+    Print *, k
 
   !>>> determine number of rgrid points nrmax
   !    note: nrmax should be even for simpson's integration
@@ -85,9 +85,7 @@ program main
     nrmax = rmax/dr
     Print *, nrmax 
 
-
-
-  !allocate memory
+    !allocate memory
     allocate(rgrid(nrmax),rweights(nrmax))
     allocate(kgrid(nkmax),kweights(nkmax))
     allocate(contwaves(nkmax,nrmax))
@@ -175,7 +173,7 @@ program main
   
   open(1, file="ICSout.txt", action="write")
   do l=lmin,lmax
-    write(1, *) ICS(l), sum(ICS(lmin:l))
+    write(1, "(*(g0.6,:,','))") ICS(l), sum(ICS(lmin:l))
   end do
   close(1)
 

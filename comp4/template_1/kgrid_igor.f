@@ -303,7 +303,8 @@ C     npoints, endk, npoints2, endk2, nendk, endp, midnp, width
          nk(1) = np
          sk(1) = endk
          nk(2) = np2
-         sk(2) = endk2         
+         sk(2) = endk2
+         sk(0) = 0.0d0
          mint = 3
          nk(mint) = nendk
          sk(mint) = endp
