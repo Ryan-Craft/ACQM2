@@ -24,7 +24,6 @@ end subroutine LaguerreSub
 subroutine hwfsubroutine(alpha, l, N, nr, dr, rmax, rgrid, wf)
          implicit none
 
-
          ! LOCAL
          real*8 :: normalise
          integer :: i,j, ier
@@ -48,7 +47,7 @@ subroutine hwfsubroutine(alpha, l, N, nr, dr, rmax, rgrid, wf)
          
 
          ! INOUT
-         real*8,dimension(nr,N), intent(inout) :: wf
+         real*8, dimension(nr,N), intent(inout) :: wf
        
          !use recurrence relation to compute the basis functions
          CALL LaguerreSub(alpha, l, nr, N, rgrid, basis)
@@ -129,7 +128,7 @@ subroutine hwfsubroutine(alpha, l, N, nr, dr, rmax, rgrid, wf)
          !recover wavefunctions:
          do i =1,N
                  do j = 1,N
-                         wf(:,i) = z(j,i)*basis(:,j) + wf(:,i)
+                         !wf(:,i) = z(j,i)*basis(:,j) + wf(:,i)
                          !Print *, wf(:,i)
                  end do
          end do
@@ -140,13 +139,13 @@ subroutine hwfsubroutine(alpha, l, N, nr, dr, rmax, rgrid, wf)
 
          open(1, file='wfout.txt', action='write')
          do i =1,nr
-                         write(1, '(*(f12.8))'), rgrid(i), wf(i,:)
+!                         write(1, '(*(f12.8))'), rgrid(i), wf(i,:)
          end do
          close(1)
          
          open(1, file='wout.txt',action='write', access='append')
          do i =1,N
-                 write(1, '(*(f12.8))'), real(N), w(i,1)
+ !                write(1, '(*(f12.8))'), real(N), w(i,1)
          end do
  
        
