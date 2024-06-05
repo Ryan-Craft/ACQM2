@@ -38,8 +38,6 @@ program main
     allocate(wf(nr,N))  
 
 
-
-
     ! DEFINE R AND K GRIDS, MAKE SURE TO CONVERT TO eV, there is no 0 energy element
     do i=1,nr
        rgrid(i) = i*dr  
@@ -63,7 +61,7 @@ program main
  
 
     ! CREATE RADIAL WAVEFUNCTION OF HYDROGEN
-    
+    call hwfsubroutine(alpha, l, N, nr, dr, rmax, rgrid, wf)    
     
 
     ! DEALLOCATE MEMORY 
