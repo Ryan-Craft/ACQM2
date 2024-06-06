@@ -27,7 +27,7 @@ psi41(x) = base(x) * L3(x) * norm4
 
 
 set key font ",14"
-set title "First 4 Basis functions, Analytical and Computed for l=0, alpha=1"
+set title "First 4 Basis functions, Analytical and Computed for l=0, alpha=2"
 set title font ",14"
 set ylabel "Basis Function Value"
 set xlabel "r (a_0)"
