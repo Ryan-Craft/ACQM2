@@ -252,10 +252,14 @@ program main
 ! i = initial, j= final
          do i=1,nk
              do j=1,nk
-                 f = sin(kgrid(i)*rgrid(:) *(pi/180.0d0)) * sin(kgrid(j)*rgrid(:)*(pi/180.0d0))
-                 Vdirect(i,j) = Vdirect(i,j) * (2.0d0/pi) * sum(rgrid * f * (1/rgrid * A1 + A2)) 
+                 f = sin(kgrid(i)*rgrid(:)) * sin(kgrid(j)*rgrid(:))
+
+                     do ii=1,nr
+                         Vdirect(j,i) = Vdirect(j,i) + rweights(ii)*f(ii)*((1/rgrid(ii) * A1(ii) + A2(ii)) - 1.0d0/rgrid(ii))
+                     end do
              end do
          end do
+         Vdirect = Vdirect*(2/pi)
          Print *, "first 5 elements of Vdirect"
          Print *, Vdirect(1:5,1:5)
  
