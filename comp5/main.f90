@@ -47,10 +47,13 @@ program main
          ! create array for wavefunctions
          real,dimension(:,:), allocatable :: wf
 
+         ! fortran constant
+         real, parameter :: pi = 4.0d0*atan(1.0d0)
+         real, parameter :: radtodeg = 180.0d0/pi
 
          ! additions for assignment 5, energy grid
          real*8, dimension(:), allocatable :: kgrid, rweights
-         integer :: nk
+         integer :: nk, ii
          real*8 :: kmax, dk 
          real*8, dimension(:), allocatable :: A1
          real*8, dimension(:), allocatable :: A2
@@ -65,11 +68,11 @@ program main
          Print *, alpha, N, l, dr, rmax, dk, kmax
 
          !calculate rgrid params
-         nr = rmax/dr 
+         nr = rmax/dr
          Print *, "nr ::", nr
         
          ! calculate kgrid params
-         nk = kmax/dk 
+         nk = kmax/dk +1
          Print *, "nk ::", nk
 
 
@@ -95,7 +98,7 @@ program main
          end do 
          
          do i =1,nk
-                kgrid(i) = dk*i
+                kgrid(i) = dk*(i-1)
          end do
 
          ! generate weights for r dimension integration process on an even grid
@@ -228,22 +231,55 @@ program main
          allocate(g(nr))
 
 !!! HARD CODED 1s-1s state g function
-         g = wf(:,2)*wf(:,2) 
-!!! f must go over multiple k values
-         f = sin(kgrid(1)*rgrid(:)) * sin(kgrid(1)*rgrid(:)) 
- 
-! single element of matrix V(1,1)
-         do i=1,nr
+         g = wf(:,1)*wf(:,1) 
+
+! inner sums
+         A1(1) = rweights(1)*g(1) 
+         do i=2,nr
              A1(i) = A1(i-1) + rweights(i)*g(i)
          end do 
- 
-         do i=nr,1,-1
+
+         A2(nr) = (1/rgrid(nr))*rweights(nr)*g(nr) 
+         do i=nr-1,1,-1
              A2(i) = A2(i+1) + (1/rgrid(i))*rweights(i)*g(i)
          end do
 
-         sum(rweights*f*(1/rgrid * A1 + A2))
+         Print *, "A1 and A2"
+         Print *, A1(1:5)
+         Print *, A2(1:5)
 
+         Vdirect=0.0d0
+! i = initial, j= final
+         do i=1,nk
+             do j=1,nk
+                 f = sin(kgrid(i)*rgrid(:) *(pi/180.0d0)) * sin(kgrid(j)*rgrid(:)*(pi/180.0d0))
+                 Vdirect(i,j) = Vdirect(i,j) * (2.0d0/pi) * sum(rgrid * f * (1/rgrid * A1 + A2)) 
+             end do
+         end do
+         Print *, "first 5 elements of Vdirect"
+         Print *, Vdirect(1:5,1:5)
+ 
+ 
+         Print *, "f and g"
+         Print *, f(1:5)
+         Print *, g(1:5)
+ 
+         open(1, file="onshellVdirect.txt", action="write")
+         do i=1,nk
+             write(1, *) kgrid(i), ((-0.25)*(kgrid(i)**2/(kgrid(i)**2+1)) - (0.25)*log(1+kgrid(i)**2))*(2/pi)
+         end do
 
+         close(1)
+
+         open(1, file="Vdirectout.txt", action="write")
+         do i=1,nk
+             do j=1,nk
+                 write(1, *) kgrid(i), kgrid(j), Vdirect(i,j)
+             end do
+                 write(1, *) ""
+         end do  
+
+         close(1)
 
 
 
