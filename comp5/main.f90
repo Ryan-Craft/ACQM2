@@ -54,7 +54,7 @@ program main
          ! additions for assignment 5, energy grid
          real*8, dimension(:), allocatable :: kgrid, rweights
          integer :: nk, ii, jj
-         real*8 :: kmax, dk, deltafi, H_init, H_final, energy
+         real*8 :: kmax, dk, deltafi, H_init, H_final, energy, projE
          real*8, dimension(:), allocatable :: A1
          real*8, dimension(:), allocatable :: A2
          real*8, dimension(:), allocatable :: f
@@ -73,8 +73,8 @@ program main
          !read stored values into relevent variables
          
          open(unit=1, file="LaguerreParams.txt", action="read")
-         read(1,*) alpha, N, l, dr, rmax, dk, kmax, H_init, H_final
-         Print *, alpha, N, l, dr, rmax, dk, kmax, H_init, H_final
+         read(1,*) alpha, N, l, dr, rmax, dk, kmax, H_init, H_final, projE
+         Print *, alpha, N, l, dr, rmax, dk, kmax, H_init, H_final, projE
 
          !calculate rgrid params
          nr = rmax/dr
@@ -89,7 +89,7 @@ program main
          nk = kmax/dk
          Print *, "nk ::", nk
 
-         energy = 10.0d0/27.21136 - 0.5
+         energy = projE/27.21136 - 0.5
 
          ! based on options from file, allocate appropriate memory to rgrid and the basis array
          allocate(rgrid(nr))
@@ -221,8 +221,6 @@ program main
 
 
          !!! Assignment 5 additional
-
-         
          ! memory allocations
 
          allocate(A1(nr)) 
@@ -230,10 +228,10 @@ program main
          allocate(f(nr)) 
          allocate(g(nr))
 
-!        G is a function of the initial and final wavefunctions of H
+         !g is a function of the initial and final wavefunctions of H
          g = wf(:,H_init)*wf(:,H_final) 
 
-! inner sums
+         ! inner sums
          A1(1) = rweights(1)*g(1) 
          do i=2,nr
              A1(i) = A1(i-1) + rweights(i)*g(i)
@@ -272,9 +270,9 @@ program main
          Print *, f(1:5)
          Print *, g(1:5)
  
-         open(1, file="onshellVdirect.txt", action="write")
+         open(1, file="onshellVdirectExchange.txt", action="write")
          do i=2,nk
-             write(1, *) kgrid(i), ((-0.25)*(kgrid(i)**2/(kgrid(i)**2+1)) - (0.25)*log(1+kgrid(i)**2))*(2/pi)!, (16.0*kgrid(i)*(4.0*kgrid(i)**2.0 + 3.0)*sqrt(8.0*kgrid(i)**2.0 - 6.0))!/(81.0*(4.0*kgrid(i)**2.0 +1.0)**2.0) 
+             write(1, *) kgrid(i), ((-0.25)*(kgrid(i)**2/(kgrid(i)**2+1)) - (0.25)*log(1+kgrid(i)**2))*(2/pi), -(kgrid(i)**2*(kgrid(i)**2-3))/(kgrid(i)**2+1)**3
          end do
          close(1)
 
@@ -294,11 +292,9 @@ program main
              V2(i) = -sum(rweights * sin(kgrid(i)*rgrid) * wf(:,H_final)/rgrid)
              ioverlap(i) = sum(rweights*sin(kgrid(i)*rgrid)*wf(:,H_final))
              foverlap(i) = sum(rweights*sin(kgrid(i)*rgrid)*wf(:,H_init))
-         end do         
-         Print *, "Transpose Test 5x5 elements of V1 and V2 vectors:::"
-         Print *, V1(:5)
-         Print *, V2(:5)
-
+         end do  
+       
+         ! V1mat V2mat calculation from overlap matrix
          do i = 1,nk
              do j = 1,nk
                  V1mat(j,i) = V1(j) * ioverlap(i)
@@ -306,21 +302,11 @@ program main
                  Eoverlap(j,i) = (energy - kgrid(j)**2/2.0d0 - kgrid(i)**2/2.0d0) * ioverlap(i)* foverlap(j)
              end do
          end do
-        
-         Print *, "Transpose Test 5x5 elements of V1 and V2 matricies:::"
-         Print *, V1mat(3,:5)
-         Print *, ""
-         Print *, V2mat(:5,3) 
-
-         Print *, "Overlap i and f"
-         Print *, ioverlap(:5)
-         Print *, foverlap(:5)
-
 
 
          ! we are going to reuse f and g her. also A1 and A2
          g = 0.0d0 
-         f= 0.0d0
+         f = 0.0d0
          A1 = 0.0d0 
          A2 = 0.0d0
 
@@ -337,21 +323,20 @@ program main
                  A2(ii) = A2(ii+1) + (1/rgrid(ii))*rweights(ii)*g(ii)
              end do
 
-
              do j=1,nk
                  f = sin(kgrid(j)*rgrid(:))*wf(:,H_init)
-
                  V12(j,i) = sum(rweights*f*(A1/rgrid + A2))
-
              end do
          end do
          Exchange = 0.0d0
          Exchange = (Eoverlap - V1mat - V2mat - V12)*(2.0d0/pi)
          
  
-         Print *, "Exchange matrix :: "
-         Print *, Exchange(:5,1)
-  
+         Print *, "Exchange matrix :: diag from 1-5"
+         do i=1,5
+            Print*, Exchange(i,i) 
+         end do
+ 
 
          open(1, file="Exchange.txt", action="write")
          do i=1,nk
@@ -360,10 +345,7 @@ program main
              end do
                  write(1, *) ""
          end do
-
          close(1)
-
-
 
 
          deallocate(rgrid)
