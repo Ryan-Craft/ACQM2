@@ -54,7 +54,7 @@ program main
          ! additions for assignment 5, energy grid
          real*8, dimension(:), allocatable :: kgrid, rweights
          integer :: nk, ii, jj
-         real*8 :: kmax, dk, deltafi, H_init, H_final
+         real*8 :: kmax, dk, deltafi, H_init, H_final, energy
          real*8, dimension(:), allocatable :: A1
          real*8, dimension(:), allocatable :: A2
          real*8, dimension(:), allocatable :: f
@@ -62,9 +62,13 @@ program main
          real*8, dimension(:,:), allocatable :: Vdirect
          real*8, dimension(:), allocatable :: foverlap
          real*8, dimension(:), allocatable :: ioverlap
-         real*8, dimension(:,:), allocatable :: V1
-         real*8, dimension(:,:), allocatable :: V2
+         real*8, dimension(:), allocatable :: V1
+         real*8, dimension(:), allocatable :: V2
+         real*8, dimension(:,:), allocatable :: V1mat
+         real*8, dimension(:,:), allocatable :: V2mat
          real*8, dimension(:,:), allocatable :: V12
+         real*8, dimension(:,:), allocatable :: Exchange
+         real*8, dimension(:,:), allocatable :: Eoverlap
          !open file location: hard coded for now but could become flexible
          !read stored values into relevent variables
          
@@ -76,11 +80,16 @@ program main
          nr = rmax/dr
          Print *, "nr ::", nr
         
+         if (mod(nr,2)==0) nr=nr+1
+          
+         
+
+
          ! calculate kgrid params
-         nk = kmax/dk +1
+         nk = kmax/dk
          Print *, "nk ::", nk
 
-
+         energy = 10.0d0/27.21136 - 0.5
 
          ! based on options from file, allocate appropriate memory to rgrid and the basis array
          allocate(rgrid(nr))
@@ -95,7 +104,7 @@ program main
          allocate(kgrid(nk))         
          allocate(rweights(nr))
          allocate(Vdirect(nk,nk))
-         allocate(ioverlap(nk), foverlap(nk), V1(nk,nk), V2(nk,nk), V12(nk,nk))
+         allocate(ioverlap(nk), foverlap(nk), V1(nk), V2(nk), V12(nk,nk), V2mat(nk,nk), V1mat(nk,nk), Exchange(nk,nk), Eoverlap(nk,nk))
 
 !!! YOU HAVE CHANGED WHAT RANGE THE RGRID GOES OVER DO NOT FORGOR
          !allocate values to the rgrid and kgrid
@@ -108,9 +117,9 @@ program main
          end do
 
          ! generate weights for r dimension integration process on an even grid
-         rweights = 0.0d0
-         do i =1,nr
-             rweights(i) = 4.0d0 - 2.0d0*mod(i+1,2)
+         rweights = 1.d0
+         do i =2,nr-1
+             rweights(i) = 2.0d0 + 2.0d0*mod(i+1,2)
          end do
          rweights = rweights * dr / 3.0d0
 
@@ -178,21 +187,6 @@ program main
          do i =1,N
                  H(i,i) = H(i,i) + alpha**2 - (alpha/(i+l)) 
          end do
-         
-         Print *, "H MATRIX::"
-         do i=1,N
-                 !Print *, H(i,:)
-         end do         
- 
-         Print *, "V MATRIX::"
-         do i=1,N
-                 !Print *, V(i,:)
-         end do  
-         
-         Print *, "K MATRIX::"
-         do i=1,N
-                 !Print *, K(i,:)
-         end do 
          
          
 
@@ -294,45 +288,33 @@ program main
 
          close(1)
 
+         ! V1 and V2
+         do i =1,nk
+             V1(i) = -sum(rweights * sin(kgrid(i)*rgrid) * wf(:,H_init)/rgrid) 
+             V2(i) = -sum(rweights * sin(kgrid(i)*rgrid) * wf(:,H_final)/rgrid)
+             ioverlap(i) = sum(rweights*sin(kgrid(i)*rgrid)*wf(:,H_final))
+             foverlap(i) = sum(rweights*sin(kgrid(i)*rgrid)*wf(:,H_init))
+         end do         
+         Print *, "Transpose Test 5x5 elements of V1 and V2 vectors:::"
+         Print *, V1(:5)
+         Print *, V2(:5)
 
-
-         ! Overlap Matricies
+         do i = 1,nk
+             do j = 1,nk
+                 V1mat(j,i) = V1(j) * ioverlap(i)
+                 V2mat(j,i) = V2(i) * foverlap(j) 
+                 Eoverlap(j,i) = (energy - kgrid(j)**2/2.0d0 - kgrid(i)**2/2.0d0) * ioverlap(i)* foverlap(j)
+             end do
+         end do
         
-         do i=1,nk
-             foverlap(i) = sum(rweights(:)*wf(:,H_final)*sin(rgrid(:)*kgrid(i)))
-             ioverlap(i) = sum(rweights(:)*wf(:,H_init)*sin(rgrid(:)*kgrid(i)))
-         end do
- 
-         
+         Print *, "Transpose Test 5x5 elements of V1 and V2 matricies:::"
+         Print *, V1mat(3,:5)
+         Print *, ""
+         Print *, V2mat(:5,3) 
 
-! i = initial, j = final
-         do i=1,nk
-            !g = wf(:,H_final)*sin(kgrid(i)*rgrid(:)
-            !A1(1) = rweights(1)*g(1)
-
-            !do jj=1,nr
-            !   A1(jj) = A1(jj-1) + rweights(jj)*g(jj) 
-            !end do
-
-            !A2(nr) = rweights(nr)*g(nr)*(1/rgrid(nr))
-            !do jj=nr-1,1,-1
-            !    A2(jj) = A2(jj+1) + rweights(jj)*g(jj)*(1/rgrid(jj))
-            !end do
-
-             
-
-            !do j=1,nk
-            !    f = sin(kgrid(j)*rgrid(:))*wf(:,H_init) 
-            !    do ii=1,nr
-            !        V12(i,j) = V12(i,j) + rweights(ii)*f(ii)*(1/rgrid(ii) * A1(ii) + A2(ii)) 
-            !    end do
- 
-            !end do
-         end do
-         
-
-
-
+         Print *, "Overlap i and f"
+         Print *, ioverlap(:5)
+         Print *, foverlap(:5)
 
 
 
@@ -341,22 +323,45 @@ program main
          f= 0.0d0
          A1 = 0.0d0 
          A2 = 0.0d0
-         
-        
-
 
          do i=1,nk
+             g = sin(kgrid(i)*rgrid(:)) * wf(:,H_final)
+
+             A1(1) = rweights(1)*g(1)
+             do ii=2,nr
+                 A1(ii) = A1(ii-1) + rweights(ii)*g(ii)
+             end do
+
+             A2(nr) = (1/rgrid(nr))*rweights(nr)*g(nr)
+             do ii=nr-1,1,-1
+                 A2(ii) = A2(ii+1) + (1/rgrid(ii))*rweights(ii)*g(ii)
+             end do
+
+
              do j=1,nk
-                 !f = sin(kgrid(i)*rgrid(:))*wf(:,)
-                 do ii=1,nr
-                     V12(i,j) = V12(i,j) !+          
-                 end do
+                 f = sin(kgrid(j)*rgrid(:))*wf(:,H_init)
+
+                 V12(j,i) = sum(rweights*f*(A1/rgrid + A2))
+
              end do
          end do
+         Exchange = 0.0d0
+         Exchange = (Eoverlap - V1mat - V2mat - V12)*(2.0d0/pi)
+         
+ 
+         Print *, "Exchange matrix :: "
+         Print *, Exchange(:5,1)
+  
 
+         open(1, file="Exchange.txt", action="write")
+         do i=1,nk
+             do j=1,nk
+                 write(1, *) kgrid(i), kgrid(j), Exchange(i,j)
+             end do
+                 write(1, *) ""
+         end do
 
-
-
+         close(1)
 
 
 
