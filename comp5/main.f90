@@ -54,18 +54,23 @@ program main
          ! additions for assignment 5, energy grid
          real*8, dimension(:), allocatable :: kgrid, rweights
          integer :: nk, ii
-         real*8 :: kmax, dk 
+         real*8 :: kmax, dk, deltafi, H_init, H_final
          real*8, dimension(:), allocatable :: A1
          real*8, dimension(:), allocatable :: A2
          real*8, dimension(:), allocatable :: f
          real*8, dimension(:), allocatable :: g
          real*8, dimension(:,:), allocatable :: Vdirect
+         real*8, dimension(:,:), allocatable :: foverlap
+         real*8, dimension(:,:), allocatable :: ioverlap
+         real*8, dimension(:,:), allocatable :: V1
+         real*8, dimension(:,:), allocatable :: V2
+         real*8, dimension(:,:), allocatable :: V12
          !open file location: hard coded for now but could become flexible
          !read stored values into relevent variables
          
          open(unit=1, file="LaguerreParams.txt", action="read")
-         read(1,*) alpha, N, l, dr, rmax, dk, kmax
-         Print *, alpha, N, l, dr, rmax, dk, kmax
+         read(1,*) alpha, N, l, dr, rmax, dk, kmax!, H_init, H_final
+         Print *, alpha, N, l, dr, rmax, dk, kmax!, H_init, H_final
 
          !calculate rgrid params
          nr = rmax/dr
@@ -90,6 +95,7 @@ program main
          allocate(kgrid(nk))         
          allocate(rweights(nr))
          allocate(Vdirect(nk,nk))
+         allocate(ioverlap(nk,nk), V1(nk,nk), V2(nk,nk), V12(nk,nk))
 
 !!! YOU HAVE CHANGED WHAT RANGE THE RGRID GOES OVER DO NOT FORGOR
          !allocate values to the rgrid and kgrid
@@ -231,7 +237,7 @@ program main
          allocate(g(nr))
 
 !!! HARD CODED 1s-1s state g function
-         g = wf(:,1)*wf(:,1) 
+         g = wf(:,H_init)*wf(:,H_final) 
 
 ! inner sums
          A1(1) = rweights(1)*g(1) 
@@ -249,20 +255,24 @@ program main
          Print *, A2(1:5)
 
          Vdirect=0.0d0
-! i = initial, j= final
+         
+
+        ! generating direct V matrix
          do i=1,nk
              do j=1,nk
                  f = sin(kgrid(i)*rgrid(:)) * sin(kgrid(j)*rgrid(:))
-
+                 if(H_init==H_final) then
+                     deltafi = 1.0d0
+                 else
+                     deltafi = 0.0d0
+                 end if                
+  
                      do ii=1,nr
-                         Vdirect(j,i) = Vdirect(j,i) + rweights(ii)*f(ii)*((1/rgrid(ii) * A1(ii) + A2(ii)) - 1.0d0/rgrid(ii))
+                         Vdirect(j,i) = Vdirect(j,i) + rweights(ii)*f(ii)*((1/rgrid(ii) * A1(ii) + A2(ii)) - deltafi/rgrid(ii))
                      end do
              end do
          end do
-         Vdirect = Vdirect*(2/pi)
-         Print *, "first 5 elements of Vdirect"
-         Print *, Vdirect(1:5,1:5)
- 
+         Vdirect = Vdirect * (2.0d0/pi) 
  
          Print *, "f and g"
          Print *, f(1:5)
@@ -284,6 +294,19 @@ program main
          end do  
 
          close(1)
+
+
+
+         ! generating the exchange matrix. Bit longer process.
+          
+ 
+
+
+
+
+
+
+
 
 
 
