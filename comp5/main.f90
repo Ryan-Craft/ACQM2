@@ -53,15 +53,15 @@ program main
 
          ! additions for assignment 5, energy grid
          real*8, dimension(:), allocatable :: kgrid, rweights
-         integer :: nk, ii
+         integer :: nk, ii, jj
          real*8 :: kmax, dk, deltafi, H_init, H_final
          real*8, dimension(:), allocatable :: A1
          real*8, dimension(:), allocatable :: A2
          real*8, dimension(:), allocatable :: f
          real*8, dimension(:), allocatable :: g
          real*8, dimension(:,:), allocatable :: Vdirect
-         real*8, dimension(:,:), allocatable :: foverlap
-         real*8, dimension(:,:), allocatable :: ioverlap
+         real*8, dimension(:), allocatable :: foverlap
+         real*8, dimension(:), allocatable :: ioverlap
          real*8, dimension(:,:), allocatable :: V1
          real*8, dimension(:,:), allocatable :: V2
          real*8, dimension(:,:), allocatable :: V12
@@ -69,8 +69,8 @@ program main
          !read stored values into relevent variables
          
          open(unit=1, file="LaguerreParams.txt", action="read")
-         read(1,*) alpha, N, l, dr, rmax, dk, kmax!, H_init, H_final
-         Print *, alpha, N, l, dr, rmax, dk, kmax!, H_init, H_final
+         read(1,*) alpha, N, l, dr, rmax, dk, kmax, H_init, H_final
+         Print *, alpha, N, l, dr, rmax, dk, kmax, H_init, H_final
 
          !calculate rgrid params
          nr = rmax/dr
@@ -95,7 +95,7 @@ program main
          allocate(kgrid(nk))         
          allocate(rweights(nr))
          allocate(Vdirect(nk,nk))
-         allocate(ioverlap(nk,nk), V1(nk,nk), V2(nk,nk), V12(nk,nk))
+         allocate(ioverlap(nk), foverlap(nk), V1(nk,nk), V2(nk,nk), V12(nk,nk))
 
 !!! YOU HAVE CHANGED WHAT RANGE THE RGRID GOES OVER DO NOT FORGOR
          !allocate values to the rgrid and kgrid
@@ -236,7 +236,7 @@ program main
          allocate(f(nr)) 
          allocate(g(nr))
 
-!!! HARD CODED 1s-1s state g function
+!        G is a function of the initial and final wavefunctions of H
          g = wf(:,H_init)*wf(:,H_final) 
 
 ! inner sums
@@ -267,9 +267,9 @@ program main
                      deltafi = 0.0d0
                  end if                
   
-                     do ii=1,nr
-                         Vdirect(j,i) = Vdirect(j,i) + rweights(ii)*f(ii)*((1/rgrid(ii) * A1(ii) + A2(ii)) - deltafi/rgrid(ii))
-                     end do
+                 do ii=1,nr
+                     Vdirect(j,i) = Vdirect(j,i) + rweights(ii)*f(ii)*((1/rgrid(ii) * A1(ii) + A2(ii)) - deltafi/rgrid(ii))
+                 end do
              end do
          end do
          Vdirect = Vdirect * (2.0d0/pi) 
@@ -279,10 +279,9 @@ program main
          Print *, g(1:5)
  
          open(1, file="onshellVdirect.txt", action="write")
-         do i=1,nk
-             write(1, *) kgrid(i), ((-0.25)*(kgrid(i)**2/(kgrid(i)**2+1)) - (0.25)*log(1+kgrid(i)**2))*(2/pi)
+         do i=2,nk
+             write(1, *) kgrid(i), ((-0.25)*(kgrid(i)**2/(kgrid(i)**2+1)) - (0.25)*log(1+kgrid(i)**2))*(2/pi)!, (16.0*kgrid(i)*(4.0*kgrid(i)**2.0 + 3.0)*sqrt(8.0*kgrid(i)**2.0 - 6.0))!/(81.0*(4.0*kgrid(i)**2.0 +1.0)**2.0) 
          end do
-
          close(1)
 
          open(1, file="Vdirectout.txt", action="write")
@@ -297,11 +296,63 @@ program main
 
 
 
-         ! generating the exchange matrix. Bit longer process.
-          
+         ! Overlap Matricies
+        
+         do i=1,nk
+             foverlap(i) = sum(rweights(:)*wf(:,H_final)*sin(rgrid(:)*kgrid(i)))
+             ioverlap(i) = sum(rweights(:)*wf(:,H_init)*sin(rgrid(:)*kgrid(i)))
+         end do
  
+         
+
+! i = initial, j = final
+         do i=1,nk
+            !g = wf(:,H_final)*sin(kgrid(i)*rgrid(:)
+            !A1(1) = rweights(1)*g(1)
+
+            !do jj=1,nr
+            !   A1(jj) = A1(jj-1) + rweights(jj)*g(jj) 
+            !end do
+
+            !A2(nr) = rweights(nr)*g(nr)*(1/rgrid(nr))
+            !do jj=nr-1,1,-1
+            !    A2(jj) = A2(jj+1) + rweights(jj)*g(jj)*(1/rgrid(jj))
+            !end do
+
+             
+
+            !do j=1,nk
+            !    f = sin(kgrid(j)*rgrid(:))*wf(:,H_init) 
+            !    do ii=1,nr
+            !        V12(i,j) = V12(i,j) + rweights(ii)*f(ii)*(1/rgrid(ii) * A1(ii) + A2(ii)) 
+            !    end do
+ 
+            !end do
+         end do
+         
 
 
+
+
+
+
+         ! we are going to reuse f and g her. also A1 and A2
+         g = 0.0d0 
+         f= 0.0d0
+         A1 = 0.0d0 
+         A2 = 0.0d0
+         
+        
+
+
+         do i=1,nk
+             do j=1,nk
+                 !f = sin(kgrid(i)*rgrid(:))*wf(:,)
+                 do ii=1,nr
+                     V12(i,j) = V12(i,j) !+          
+                 end do
+             end do
+         end do
 
 
 
