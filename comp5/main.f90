@@ -54,7 +54,7 @@ program main
          ! additions for assignment 5, energy grid
          real*8, dimension(:), allocatable :: kgrid, rweights
          integer :: nk, ii, jj
-         real*8 :: kmax, dk, deltafi, H_init, H_final, energy, projE
+         real*8 :: kmax, dk, deltafi, H_init, H_final, energy, projE, kp
          real*8, dimension(:), allocatable :: A1
          real*8, dimension(:), allocatable :: A2
          real*8, dimension(:), allocatable :: f
@@ -68,7 +68,11 @@ program main
          real*8, dimension(:,:), allocatable :: V2mat
          real*8, dimension(:,:), allocatable :: V12
          real*8, dimension(:,:), allocatable :: Exchange
-         real*8, dimension(:,:), allocatable :: Eoverlap
+         real*8, dimension(:,:), allocatable :: Eoverlap 
+         real*8, dimension(:,:), allocatable :: analyticalEx
+         real*8, dimension(:,:), allocatable ::  analyticalV
+         real*8, dimension(:), allocatable :: onshellv, onshellEx
+
          !open file location: hard coded for now but could become flexible
          !read stored values into relevent variables
          
@@ -89,7 +93,7 @@ program main
          nk = kmax/dk
          Print *, "nk ::", nk
 
-         energy = projE/27.21136 - 0.5
+         !energy = projE/27.21136 - 0.5
 
          ! based on options from file, allocate appropriate memory to rgrid and the basis array
          allocate(rgrid(nr))
@@ -105,7 +109,8 @@ program main
          allocate(rweights(nr))
          allocate(Vdirect(nk,nk))
          allocate(ioverlap(nk), foverlap(nk), V1(nk), V2(nk), V12(nk,nk), V2mat(nk,nk), V1mat(nk,nk), Exchange(nk,nk), Eoverlap(nk,nk))
-
+         allocate(analyticalEx(nk,3)) 
+         allocate(analyticalV(nk,3))
 !!! YOU HAVE CHANGED WHAT RANGE THE RGRID GOES OVER DO NOT FORGOR
          !allocate values to the rgrid and kgrid
          do i = 1, nr
@@ -149,7 +154,6 @@ program main
  
  
          !write basis to file for plotting 
-         
          open(1, file='basisout.txt', action='write')
          do i =1,nr
                          write(1, '(*(f12.8))'), rgrid(i), basis(i,:)
@@ -188,8 +192,6 @@ program main
                  H(i,i) = H(i,i) + alpha**2 - (alpha/(i+l)) 
          end do
          
-         
-
          CALL rsg(N,N,H,B,w,1,z,ier)
 
 
@@ -227,7 +229,7 @@ program main
          allocate(A2(nr))
          allocate(f(nr)) 
          allocate(g(nr))
-
+         allocate(onshellV(nk), onshellEx(nk)) 
          !g is a function of the initial and final wavefunctions of H
          g = wf(:,H_init)*wf(:,H_final) 
 
@@ -265,17 +267,22 @@ program main
              end do
          end do
          Vdirect = Vdirect * (2.0d0/pi) 
- 
-         Print *, "f and g"
-         Print *, f(1:5)
-         Print *, g(1:5)
- 
-         open(1, file="onshellVdirectExchange.txt", action="write")
-         do i=2,nk
-             write(1, *) kgrid(i), ((-0.25)*(kgrid(i)**2/(kgrid(i)**2+1)) - (0.25)*log(1+kgrid(i)**2))*(2/pi), -(kgrid(i)**2*(kgrid(i)**2-3))/(kgrid(i)**2+1)**3
-         end do
-         close(1)
 
+
+         !do i =1,nk
+          !   kp = sqrt(-1.0d0 - (-0.5/H_final**2) + kgrid(i)**2)
+         !    f = sin(kgrid(i)*rgrid(:)) * sin(kp*rgrid(:))
+         !    if(H_init==H_final) then
+         !        deltafi = 1.0d0
+         !            else
+         !        deltafi = 0.0d0
+         !    end if
+         !    onshellv(i) = sum(rweights(:)*f(:)*((1/rgrid(:) * A1(:) + A2(:)) - deltafi/rgrid(:)))             
+         !end do
+         !onshellv = onshellv * (2.0d0/pi)
+
+
+         !! output direct terms
          open(1, file="Vdirectout.txt", action="write")
          do i=1,nk
              do j=1,nk
@@ -283,7 +290,6 @@ program main
              end do
                  write(1, *) ""
          end do  
-
          close(1)
 
          ! V1 and V2
@@ -296,6 +302,7 @@ program main
        
          ! V1mat V2mat calculation from overlap matrix
          do i = 1,nk
+             energy = kgrid(i)**2/2 - 0.5
              do j = 1,nk
                  V1mat(j,i) = V1(j) * ioverlap(i)
                  V2mat(j,i) = V2(i) * foverlap(j) 
@@ -303,13 +310,14 @@ program main
              end do
          end do
 
-
          ! we are going to reuse f and g her. also A1 and A2
          g = 0.0d0 
          f = 0.0d0
          A1 = 0.0d0 
          A2 = 0.0d0
 
+
+!!! CALCULATING EXCHANGE
          do i=1,nk
              g = sin(kgrid(i)*rgrid(:)) * wf(:,H_final)
 
@@ -331,12 +339,6 @@ program main
          Exchange = 0.0d0
          Exchange = (Eoverlap - V1mat - V2mat - V12)*(2.0d0/pi)
          
- 
-         Print *, "Exchange matrix :: diag from 1-5"
-         do i=1,5
-            Print*, Exchange(i,i) 
-         end do
- 
 
          open(1, file="Exchange.txt", action="write")
          do i=1,nk
@@ -346,6 +348,31 @@ program main
                  write(1, *) ""
          end do
          close(1)
+
+
+         !! POPULATE AT 4xnk array
+
+         do i=1,nk
+              analyticalV(i,1) = -(kgrid(i)**2 / (kgrid(i)**2 + 1.d0) + log(kgrid(i)**2 + 1.d0)) / 2.d0 / pi
+              !analyticalV(i,2) = 32.d0 * kgrid(i) * (4.d0*kgrid(i)**2 + 3.d0) * sqrt(8.d0*kgrid(i)**2 - 6.d0) &
+        !/ (4.d0*kgrid(i)**2 + 1.d0)**2 / 81.d0 / pi
+        !      analyticalV(i,3) = 9.d0 * sqrt(3.d0) * (135.d0*kgrid(i)**4 + 87.d0*kgrid(i)**2 - 4.d0) &
+        !* sqrt(9.d0*kgrid(i)**2 - 8.d0) / (9.d0*kgrid(i)**2 + 1.d0)**3 / 64.d0 / pi
+              analyticalEx(i,1) = -2.d0 * (kgrid(i))**2 * ((kgrid(i))**2 - 3.d0) / ((kgrid(i))**2 + 1.d0)**3 / pi
+!              analyticalEx(i,2) = -32.d0 * kf * (16.d0*kf**4 - 72.d0*kf**2 + 13.d0) &
+ !       * sqrt(8.d0*kf**2 - 6) / (4.d0*kf**2 + 1.d0)**4 / 9.d0 / pi
+  !            analyticalEx(i,3) = -9.d0 * sqrt(3.d0) * (1701.d0*kf**6 - 8208.d0*kf**4 &
+   !     + 2325.d0*kf**2 - 70.d0) * sqrt(9.d0*kf**2 - 8.d0) / (9.d0*kf**2 + 1.d0) &
+    !    / 4.d0 / pi
+              
+         end do
+
+         open(1, file="DirectAvsC.txt", action="write")
+         do i=1,nk
+            write(1, *), kgrid(i), analyticalV(i,1), Vdirect(i,i), analyticalEx(i,1), Exchange(i,i)
+         end do
+
+
 
 
          deallocate(rgrid)
