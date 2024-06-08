@@ -54,7 +54,7 @@ program main
          ! additions for assignment 5, energy grid
          real*8, dimension(:), allocatable :: kgrid, rweights
          integer :: nk, ii, jj
-         real*8 :: kmax, dk, deltafi, H_init, H_final, energy, projE, kp
+         real*8 :: kmax, dk, deltafi, H_init, H_final, energy, projE, kp, S, theta
          real*8, dimension(:), allocatable :: A1
          real*8, dimension(:), allocatable :: A2
          real*8, dimension(:), allocatable :: f
@@ -93,7 +93,6 @@ program main
          nk = kmax/dk
          Print *, "nk ::", nk
 
-         !energy = projE/27.21136 - 0.5
 
          ! based on options from file, allocate appropriate memory to rgrid and the basis array
          allocate(rgrid(nr))
@@ -200,8 +199,8 @@ program main
          do i =1,N
                  do j = 1,N
                          wf(:,i) = z(j,i)*basis(:,j) + wf(:,i)
-                         !Print *, wf(:,i)
                  end do
+                 if (wf(1, i) < 0) wf(:, i) = -wf(:, i)
          end do
          Print *, "W::"
          !Print *, w(1,:)
@@ -220,10 +219,13 @@ program main
          end do
  
 
-
+         
 
          !!! Assignment 5 additional
          ! memory allocations
+
+         S=0.0d0
+         theta = 0.0d0
 
          allocate(A1(nr)) 
          allocate(A2(nr))
@@ -268,18 +270,18 @@ program main
          end do
          Vdirect = Vdirect * (2.0d0/pi) 
 
-
-         !do i =1,nk
-          !   kp = sqrt(-1.0d0 - (-0.5/H_final**2) + kgrid(i)**2)
-         !    f = sin(kgrid(i)*rgrid(:)) * sin(kp*rgrid(:))
-         !    if(H_init==H_final) then
-         !        deltafi = 1.0d0
-         !            else
-         !        deltafi = 0.0d0
-         !    end if
-         !    onshellv(i) = sum(rweights(:)*f(:)*((1/rgrid(:) * A1(:) + A2(:)) - deltafi/rgrid(:)))             
-         !end do
-         !onshellv = onshellv * (2.0d0/pi)
+!!  evaluating on shell direct term
+         do i =1,nk
+             kp = sqrt(-1.0d0 + (1.0d0/H_final**2) + kgrid(i)**2)
+             f = sin(kgrid(i)*rgrid(:)) * sin(kp*rgrid(:))
+             if(H_init==H_final) then
+                 deltafi = 1.0d0
+                     else
+                 deltafi = 0.0d0
+             end if
+             onshellv(i) = sum(rweights(:)*f(:)*((1/rgrid(:) * A1(:) + A2(:)) - deltafi/rgrid(:)))             
+         end do
+         onshellv = onshellv * (2.0d0/pi)
 
 
          !! output direct terms
@@ -292,6 +294,9 @@ program main
          end do  
          close(1)
 
+!!! SETUP EXCHANGE ELEMENTS
+         energy = projE/27.21136 - 0.5
+         energy = energy * (1 + theta * ((-1)**S - 1))
          ! V1 and V2
          do i =1,nk
              V1(i) = -sum(rweights * sin(kgrid(i)*rgrid) * wf(:,H_init)/rgrid) 
@@ -302,7 +307,6 @@ program main
        
          ! V1mat V2mat calculation from overlap matrix
          do i = 1,nk
-             energy = kgrid(i)**2/2 - 0.5
              do j = 1,nk
                  V1mat(j,i) = V1(j) * ioverlap(i)
                  V2mat(j,i) = V2(i) * foverlap(j) 
@@ -338,7 +342,37 @@ program main
          end do
          Exchange = 0.0d0
          Exchange = (Eoverlap - V1mat - V2mat - V12)*(2.0d0/pi)
-         
+
+
+!! ON SHELL EXCHANGE ONLY
+
+         ! V1 and V2
+         do i =1,nk
+             kp = sqrt(-1.0d0 + (1.0d0/H_final**2) + kgrid(i)**2)
+             V1(i) = -sum(rweights * sin(kp*rgrid) * wf(:,H_init)/rgrid)
+             V2(i) = -sum(rweights * sin(kgrid(i)*rgrid) * wf(:,H_final)/rgrid)
+             ioverlap(i) = sum(rweights*sin(kgrid(i)*rgrid)*wf(:,H_final))
+             foverlap(i) = sum(rweights*sin(kp*rgrid)*wf(:,H_init))
+             
+             energy = kgrid(i)**2/2 - 0.5
+             energy = energy * (1 + theta * ((-1)**S - 1))
+ 
+             g = sin(kgrid(i)*rgrid(:)) * wf(:,H_final)
+
+             A1(1) = rweights(1)*g(1)
+             do ii=2,nr
+                 A1(ii) = A1(ii-1) + rweights(ii)*g(ii)
+             end do
+
+             A2(nr) = (1/rgrid(nr))*rweights(nr)*g(nr)
+             do ii=nr-1,1,-1
+                 A2(ii) = A2(ii+1) + (1/rgrid(ii))*rweights(ii)*g(ii)
+             end do
+             f = sin(kp*rgrid(:))*wf(:,H_init)
+             onshellEx(i) = (energy - kp**2/2.0d0 - kgrid(i)**2/2.0d0) * ioverlap(i)* foverlap(i) &
+                            - V1(i) * ioverlap(i) - V2(i) * foverlap(i) - sum(rweights * f * ((1/rgrid)*A1 + A2))
+         end do
+         onshellEx = onshellEx*(2.0d0/pi)
 
          open(1, file="Exchange.txt", action="write")
          do i=1,nk
@@ -354,22 +388,22 @@ program main
 
          do i=1,nk
               analyticalV(i,1) = -(kgrid(i)**2 / (kgrid(i)**2 + 1.d0) + log(kgrid(i)**2 + 1.d0)) / 2.d0 / pi
-              !analyticalV(i,2) = 32.d0 * kgrid(i) * (4.d0*kgrid(i)**2 + 3.d0) * sqrt(8.d0*kgrid(i)**2 - 6.d0) &
-        !/ (4.d0*kgrid(i)**2 + 1.d0)**2 / 81.d0 / pi
-        !      analyticalV(i,3) = 9.d0 * sqrt(3.d0) * (135.d0*kgrid(i)**4 + 87.d0*kgrid(i)**2 - 4.d0) &
-        !* sqrt(9.d0*kgrid(i)**2 - 8.d0) / (9.d0*kgrid(i)**2 + 1.d0)**3 / 64.d0 / pi
+              analyticalV(i,2) = 32.d0 * kgrid(i) * (4.d0*kgrid(i)**2 + 3.d0) * sqrt(8.d0*kgrid(i)**2 - 6.d0) &
+        / (4.d0*kgrid(i)**2 + 1.d0)**2 / 81.d0 / pi
+              analyticalV(i,3) = 9.d0 * sqrt(3.d0)*kgrid(i) * (135.d0*kgrid(i)**4 + 87.d0*kgrid(i)**2 - 4.d0) &
+        * sqrt(9.d0*kgrid(i)**2 - 8.d0) / (9.d0*kgrid(i)**2 + 1.d0)**3 / 64.d0 / pi
               analyticalEx(i,1) = -2.d0 * (kgrid(i))**2 * ((kgrid(i))**2 - 3.d0) / ((kgrid(i))**2 + 1.d0)**3 / pi
-!              analyticalEx(i,2) = -32.d0 * kf * (16.d0*kf**4 - 72.d0*kf**2 + 13.d0) &
- !       * sqrt(8.d0*kf**2 - 6) / (4.d0*kf**2 + 1.d0)**4 / 9.d0 / pi
-  !            analyticalEx(i,3) = -9.d0 * sqrt(3.d0) * (1701.d0*kf**6 - 8208.d0*kf**4 &
-   !     + 2325.d0*kf**2 - 70.d0) * sqrt(9.d0*kf**2 - 8.d0) / (9.d0*kf**2 + 1.d0) &
-    !    / 4.d0 / pi
+              analyticalEx(i,2) = -32.d0 * kgrid(i) * (16.d0*kgrid(i)**4 - 72.d0*kgrid(i)**2 + 13.d0) &
+        * sqrt(8.d0*kgrid(i)**2 - 6) / (4.d0*kgrid(i)**2 + 1.d0)**4 / 9.d0 / pi
+              analyticalEx(i,3) = -9.d0 * sqrt(3.d0)*kgrid(i) * (1701.d0*kgrid(i)**6 - 8208.d0*kgrid(i)**4 &
+        + 2325.d0*kgrid(i)**2 - 70.d0) * sqrt(9.d0*kgrid(i)**2 - 8.d0) / (9.d0*kgrid(i)**2 + 1.d0)**5 &
+        / 4.d0 / pi
               
          end do
 
          open(1, file="DirectAvsC.txt", action="write")
          do i=1,nk
-            write(1, *), kgrid(i), analyticalV(i,1), Vdirect(i,i), analyticalEx(i,1), Exchange(i,i)
+            write(1, *), kgrid(i), analyticalV(i,H_final), onshellV(i), analyticalEx(i,H_final), onshellEx(i)
          end do
 
 
