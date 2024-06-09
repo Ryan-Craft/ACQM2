@@ -1,0 +1,626 @@
+\documentclass{article}
+\usepackage{graphicx, multicol} % Required for inserting images
+\usepackage{amsfonts,amssymb,amsmath,mathbbol,amsthm,amstext,esint,nccmath,upgreek}
+\usepackage{graphics,graphicx,epsfig, xcolor, soul}
+\usepackage[normalem]{ulem}
+\usepackage[margin={2cm,2cm}]{geometry}
+\usepackage{tikz,pgfplots, hyperref}
+\usepackage{siunitx}
+\usepackage{multirow}
+\usepackage{array}
+\usepackage{physics}
+\usepackage{float}
+\usepackage{listings}
+\usepackage{cleveref}
+\usepackage{booktabs}
+\usepackage[american,siunitx]{circuitikz}
+\usepackage{caption}
+\usepackage{subcaption}
+\newcolumntype{M}[1]{>{\centering\arraybackslash}m{#1}}
+\usepackage{pgfplotstable}
+\pgfplotsset{compat=1.3}
+\renewcommand{\vec}[1]{\mathbf{#1}}
+\let\oldhat\hat
+\renewcommand{\hat}[1]{\oldhat{\mathbf{#1}}}
+
+\AtBeginDocument{
+\RenewCommandCopy\qty\SI
+\heavyrulewidth=.08em
+\lightrulewidth=.05em
+\cmidrulewidth=.03em
+\belowrulesep=.65ex
+\belowbottomsep=0pt
+\aboverulesep=.4ex
+\abovetopsep=0pt
+\cmidrulesep=\doublerulesep
+\cmidrulekern=.5em
+\defaultaddspace=.5em
+\parindent=0pt
+\parskip=6pt plus 2pt
+}
+\usepackage[authordate,natbib,maxcitenames=3]{biblatex-chicago}
+\addbibresource{bib2.bib}
+\setcounter{tocdepth}{5}
+\setcounter{secnumdepth}{5}
+\newcommand\simpleparagraph[1]{%
+	\stepcounter{paragraph}\paragraph*{\theparagraph\quad{}#1}}
+
+
+
+\begin{document}
+	\noindent
+	\title{Computational Assignment 4: Potential Scattering}
+	\author{Ryan Craft}
+    \maketitle 
+    
+    As per last few reports, the latest version of the code can be found on \url{https://github.com/Ryan-Craft/ACQM2.git} in the folder \textit{comp4/template\_1}. Code listings at the end.
+    Made an attempt at problem 2, but in the interest of completing the bulk of assignment 5 problems 3/4 are probably not included, unless I was able to come back to this report and finish them at some point. Most of the code listings are the missing code components and any surrounding 'context', as I figure there is no need for you to see code you wrote. You've seen us make rgrids and stuff like that a lot so im not going to put that in here, but anything else that is new will be listed at the end of the document.
+    
+    \section{Problem 1: Potential Scattering}
+    
+    We consider the 1D scattering problem of a projectile electron/positron on a 1s state hydrogen atom. We assume that the atomic state is fixed in the 1s state, and ignore exchange terms of close-coupling, and consider different angular momentum of the projectile and the direct V matrix elements.
+    
+    The direct V-matrix 1s elements become
+    
+    \begin{gather}
+   	\bra{\vec{k}_f \phi_{1s}}\frac{z}{r_1} - \frac{z}{|\vec{r_1} - \vec{r_2}|}\ket{\phi_{1s}\vec{k}_f}
+   	\end{gather}
+   	
+   	for projectile charge z.
+   	
+   	Integrating over the target space we get the simple potential function operating on the right
+   	
+   	\begin{gather}
+   		\bra{\vec{k}_f} z(1+ \frac{1}{r}) e^{-2r} \ket{\vec{k}_f}\\
+   		V(r) = z(1+ \frac{1}{r}) e^{-2r}
+   	\end{gather}
+   	
+   	The potential function is implemented as a function of $r$ in code placed in listing \ref{GeneratingV}.
+   	
+   	Far from the potential, the particle acts as a plane wave with the ordinary Schrodinger equation
+   	
+   	\begin{gather}
+   		H_0\ket{\vec{k}} = \frac{k^2}{2}\ket{\vec{k}}
+   	\end{gather}
+   	
+   	The main goal here is to determine the cross section and the differential cross section of the scattering situation set up here. To determine this we will need to solve the 3D Lippman Schwinger equation for the transition matrix and the K matrix. 
+   	
+   	The 3d LS equation is given below 
+   	
+   	\begin{gather}
+   		\braket{\vec{k}_f}{T|\vec{k}_i} = \braket{\vec{k}_f}{V|\vec{k}_i} + \int\frac{\braket{\vec{k}_f}{V|\vec{k}}\braket{\vec{k}}{T|\vec{k}_i}}{E + i0 - k^2/2}d\vec{k} 
+   	\end{gather}
+   	
+   	for $d\vec{k} = k^2dkd\Omega$ integral over all space.
+   	
+   	To simplify this 3D LS equation, apply partial wave expansions for the plane waves
+   	
+   	\begin{gather}
+   		\braket{\vec{r}}{\vec{k}} = \sqrt{\frac{2}{\pi}} \frac{1}{kr} \sum_{lm} i^l u_l(r;k) Y^m_l(\vec{\hat{r}}) Y^{m*}_l(\vec{\hat{r}})
+   	\end{gather}
+   	
+   	Where $u_l$ are free particle continuum waves which obey 
+   	
+   	\begin{gather}
+   		\left[ -\frac{1}{2}\frac{d^2}{dr^2} + \frac{l(l+1)}{2r^2} - \epsilon_k \right]u_l(r;k) = 0
+   	\end{gather}
+   	for $\epsilon_k = k^2/2$. The continuum waves are generated is per listing \ref{ContFunctionGeneration}. 
+   	
+   	Which via problem 2's solution will simplify to the LS equation into 
+   	
+   	\begin{gather}
+   		T_l(k_f,k_l) = V_l(k_f,k_l) + \int_{0}^{\infty}\frac{V_l(k_f,k)T_l(k,k_i)}{E + i0 - k^2/2}dk
+   	\end{gather}
+   	
+   	Through theoretical lectures and assessments we know this can be simplified into a real valued integral defined in terms of a K matrix
+   	
+   	\begin{gather}
+   		K_l(k_f,k_i) = V_l(k_f,k_i) + P.V. \int_{0}^{\infty}\frac{V_l(k_f,k)K_l(k,k_i)}{E - k^2/2}dk
+   	\end{gather}
+   	
+   	Which can be discretion over an r-domain for computing
+   	
+   	\begin{gather}
+        K_l(k_f,k_i) = V_l(k_f,k_i) + \sum_{n} w_n V_l(k_f,k_n)K_l(k_n,k_i)
+   	\end{gather}
+   	
+    in this case the function $G_n = 1/(E-k_n^2/2)$ greens function is stored in the $w_n$ integration weights. 
+    The entire system can be converted to a matrix
+    \begin{gather}
+    	K_{fi} = V_{fi} + \sum_{n} w_n V_{fn} K_{ni}
+    \end{gather}
+    
+    The $fi$ terms are on-shell terms, and the $fn$, $ni$ elements are half-on shell. To get the transmission matrix and compute the differential and integrated cross sections we need to calculate the on shell $T$ matrix, which requires that we solve for both off shell $K$ matrix such that we can get the on-shell $K$ matrix. 
+    
+    To do this we solve the following system of matrix equations
+    
+    \begin{gather}
+    	\sum_{n}\left[ \delta_{fn} - w_n V_{fn}\right] K_{ni} = V_{fi}\\
+    	K_{fi} = V_{fi} + \sum_{n} w_n V_{fn} K_{ni}
+    \end{gather}
+    
+    There is a need to generate the off-shell K matrix $K_{ni}$ using the $dgesv$ subroutine provided in the assignment, via \textit{call dgesv(nkmax-1, 1, A, nkmax-1, ipiv, Koff, nkmax-1, info)}.
+    After generating this the above equations can be solved, where the first one can be solved using the matrix solving subroutine of listing \ref{matrixSolver} (provided with the assignment), to get $K_{ni}$, which is used to get $K_{fi}$ in the second. The $V$ matrix is computed separately using listing \ref{CreatingVmat}. 
+     
+    
+    The transmission matrix is then generated by calculating
+    
+    \begin{gather}
+    	T_{fi} = \frac{K_{fi}}{1+\frac{i\pi}{k_f}K_{fi}}
+    \end{gather}
+    We benefit from the elastic situation here because $k_f = k_i$.
+    
+    Then, having the transmission matrix, the scattering amplitude can be expressed as
+    
+    \begin{gather}
+    	f(\vec{k_f}, \vec{k_i}) = -\frac{\pi}{k_i^2}\sum_{l}(2l+1)T_l(k_i, k_i)P_l(\cos\theta)
+    \end{gather}
+    
+    Which is calculated in listing \ref{ScatteringAmp} (which is also where the DCS is generated).
+    
+    The differential cross section comes from this directly as ($k_f = k_i$). 
+    
+    \begin{gather}
+    	\frac{d\sigma}{d\Omega} = |f(\vec{k_f}, \vec{k_i})|^2
+    \end{gather}
+    
+    Then it is possible to calculate partial-wave integrated cross sections, which are defined as 
+    
+    \begin{gather}
+    	\sigma_l = \frac{4\pi^3}{k_i^4}(2l+1)|T_l(k_i, k_i)|^2
+    \end{gather}
+    
+    and subsequently the total cross section for a given maximum l is 
+    
+    \begin{gather}
+    	\sigma = \sum_l \sigma_l    
+    \end{gather}
+    
+    Both total and partial integrated cross sections are implemented in listing \ref{ICSmake}. 
+    
+    \subsection{Results: Electron}
+    
+    The differential cross section of the $l_{max}=3$ electron for energies between 5 and 35 eV, with steps of five is given in figure \ref{5-35l3Electron}. 
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.65]{Images/DCS-5-35eVl3Electron}
+    	\caption{DCS of $l_{max}=3$ electron scattering off of hydrogen 1s state with incident energies between 5 - 35 eV. \label{5-35l3Electron}}
+    \end{figure}
+    
+    Over this range of energies it is clear that the DCS is approaching what is qualitatively similar to a gaussian distribution. 
+    
+    The variation of the DCS with constant energy and varied angular momentum is studied in figure \ref{35evl0-3}.
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.55]{Images/DCS-35eVl0-4Electron}
+    	\caption{DCS of 35 eV incident electron on Hydrogen 1s state with lmax from 0 - 4. \label{35evl0-3}}
+    \end{figure}
+    
+    Curiously the $l_{max}=0$ DCS is a constant value over all scattering angles. This effect is very unusual, as a classical analogy of two solid objects colliding somewhat precludes the idea that the projectile could transmit \textit{through} the target. With no angular momentum the projectile is equally as likely to scatter in any direction. In this case the 1s potential symmetric wrt the scattering angle, which has resulted in an equal likelihood that the incident electron will deflect at a given angle. Observing how this changes with different angular momentum of the target state would be very interesting. 
+    
+    Partial ICS were tested from the projectile energy ranges over 1-50 eV in steps of 0.5eV. The 0 eV point is not plotted because there is no result for an incident energy of zero, rather to probe energies near zero we require finer steps in the kgrid. 0.5 eV steps provided qualitatively smooth partial ICS curves. The partial-ICS curves for electron Hydrogen scattering are given in figure \ref{partialelectron}.
+    
+    \begin{figure}[H]
+    	\centering
+    	\includegraphics[scale=0.65]{Images/ICS-partialelectron}
+    	\caption{Partial ICS for different l values (0-3) for electron scattering on Hydrogen over an energy range 0.5-50 eV. \label{partialelectron}}
+    \end{figure}
+    
+     The total integrated cross sections for increasing $l_{max} = 0-3$ were also calculated, demonstrating the convergence to a single function of the cross section.
+     
+     \begin{figure}[H]
+     	\centering
+     	\includegraphics[scale=0.62]{Images/ICSconvergenceelectron}
+     	\caption{Partial ICS for different l values (0-3) for electron scattering on Hydrogen over an energy range 0-50 eV. \label{totalelectron}}
+     \end{figure}
+     Figure \ref{totalelectron} demonstrates the convergence of the integrated cross section for increasing values of $l_{max}$, which appear to approach a single function. Convergence is rapid, with the $l_{max}=2$ and $l_{max}=3$ being nearly identical. 
+
+
+
+     \subsection{Results: Positron}
+     
+     Positron scattering results were calculated for identical values to the electron case. In studying the convergence of the DCS at fixed $l_{max} =3$ and positron incident energies of 5 - 35 eV, a similar convergence behaviour to a singular scattering function in the high energy limit is identified in figure \ref{5-35l3Positron}. 
+ 
+     \begin{figure}[H]
+     	\centering
+     	\includegraphics[scale=0.62]{Images/DCS-5-35eVl3Positron}
+     	\caption{DCS of $l_{max}=3$ positron scattering off of hydrogen 1s state with incident energies between 5 - 35 eV. \label{5-35l3Positron}}
+     \end{figure}
+     
+     A kind of opposite behaviour is detected between the positron and electron cases when comparing figured \ref{5-35l3Positron} and \ref{5-35l3Electron}. The 5eV projectile in positron scattering results in a lower differential cross section at the zero scattering angle, whereas for electron scattering, the same case has a substantially larger differential cross section. In fact the electron case has a higher differential cross section over the entire range of scattering angles for the every energy. The convergence is from higher scattering angle to lower, whereas for positron scattering the case is somewhat the opposite, with values at low theta being amplified for larger energies.
+     
+     Curiously this behaviour does not flow into the case of specific energy, varied angular momentum of figure \ref{35evl0-3Positron}. 
+     
+     \begin{figure}[H]
+     	\centering
+     	\includegraphics[scale=0.7]{Images/DCS-35eVl0-4Positron}
+     	\caption{DCS of 35 eV incident positron on Hydrogen 1s state with lmax from 0 - 4. \label{35evl0-3Positron}}
+     \end{figure}
+     
+     Increasing the angular momentum seems to converge the values of the DCS towards a similar gaussian curve to that of the electron scattering case. The $l_{max}=0$ case of uniform DCS is similar in both particles also. 
+     
+     The difference between the positron and electron behaviour seems to be mostly with respect to the energy. Whilst the positron does exhibit reduced values on all points for the DCS, the convergence behaviour is most different for static l and increasing energy.
+     
+     This difference may arise from the fact that the positron is repelled by the stationary proton, and attracted by a somewhat delocalised electron. The delocalised electron may behave to partially screen the deflection of the positron and proton in a classical analogy. Conversely, with electron projectile, the electron screens the attractive force of the proton to the electron. 
+     
+     Thus we see has energy increases both tend towards a similar scattering behaviour as one another, as higher energies appear to have the effect of disregarding the differences in the internal structure of the hydrogen atom. 
+     
+     The same similarities and differences between l states and energies are witnessed in the partial and total integrated cross sections in figure \ref{partialpositron} and \ref{totalpositron}. 
+     
+     In these plots the l=0 and/or the low energy cross sections are fundamentally different to the electron collision data, owing to a difference in the interaction between the target and the projectile which are most dominant at low energies and angular momenta. 
+     
+     \begin{figure}[H]
+     	\centering
+     	\includegraphics[scale=0.65]{Images/ICS-partialpositron}
+     	\caption{Partial ICS for different l values (0-3) for positron scattering on Hydrogen over an energy range 0.5-50 eV. \label{partialpositron}}
+     \end{figure}
+     
+     The l=0 partial cross section for the positron is substantially different to the electron, when comparing figures \ref{partialelectron} and \ref{partialpositron} this becomes apparent. The integrated cross section is lower for the positronic case at low energies and l. Convergence behaviour of the total cross section is similar to the electron but the function representing the cross section for the proton tends to be an order of magnitude less for all incident energies. Partial cross sections for l greater than zero tend to be near identical for both cases. 
+     
+     Ultimately, the higher order l values contribute less to the total cross section than the l=0 state. Thus despite convergence for higher l, the total integrated cross section between positron and electron hydrogen collision are substantially different. 
+  
+     \begin{figure}[H]
+     	\centering
+     	\includegraphics[scale=0.7]{Images/ICSconvergencepositron}
+     	\caption{Partial ICS for different l values (0-3) for positron scattering on Hydrogen over an energy range 0-50 eV. \label{totalpositron}}
+     \end{figure}
+     
+
+     \section{Problem 2}
+     
+     We start with the equation
+     
+     \begin{gather}
+     	\braket{\vec{k_f}}{T|\vec{k_i}} = \braket{\vec{k_f}}{V|\vec{k_i}} + \int_{0}^{\infty} k^2dk \int_{\Omega} d\Omega \frac{ \braket{\vec{k_f}}{V|\vec{k}} \braket{\vec{k}}{T|\vec{k_i}}}{E + i0 -k^2/2}
+     \end{gather}
+     
+     And we substitute the partial wave expansions of for the V and T matricies
+     
+     \begin{gather}
+     	\braket{\vec{k_f}}{T|\vec{k_i}} = \frac{1}{k_ik_f}\sum_{lm}T_l(k_f,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}})\\
+     	\braket{\vec{k_f}}{V|\vec{k_i}} = \frac{1}{k_ik_f}\sum_{lm}V_l(k_f,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}})
+     \end{gather}
+
+     The substitution
+     
+     \begin{gather}
+     	\frac{1}{k_ik_f}\sum_{lm}T_l(k_f,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}}) = \frac{1}{k_ik_f}\sum_{lm}V_l(k_f,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}})\\
+     	+ \int_{0}^{\infty} k^2dk \int_{\Omega} d\Omega \left[ \frac{1}{kk_f}\sum_{lm}V_l(k_f,k)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}}) \frac{1}{k_ik}\sum_{lm}T_l(k,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}}) \right]/(E + i0 -k^2/2)
+     \end{gather}
+
+    You can cancel the $k^2$ and multiply by $k_i k_f$ to remove some extra $k$ terms.
+    
+    \begin{gather}
+    	\sum_{lm}T_l(k_f,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}}) = \sum_{lm}V_l(k_f,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}})\\
+    	+ \int_{0}^{\infty} dk \int_{\Omega} d\Omega \left[\sum_{lm}V_l(k_f,k)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}}) \sum_{lm}T_l(k,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}})\right]/\left(E + i0 -k^2/2\right)
+    \end{gather}
+    
+    On the rhs lets integrate over the solid angle for a pair of the spherical harmonics to get some delta functions
+    
+    \begin{gather}
+    	\sum_{lm}T_l(k_f,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}}) = \sum_{lm}V_l(k_f,k_i)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}})\\
+    	+ \int_{0}^{\infty} dk \left[\sum_{lm}V_l(k_f,k)Y_{lm}(\vec{\hat{r}}) Y_{lm}^*(\vec{\hat{r}})T_l(k,k_i)\delta_{l_fl_i}\delta_{m_fm_i}\right]/\left(E + i0 -k^2/2\right)
+    \end{gather}
+    
+    We can multiply again by $d\Omega$ and integrate over the solid angle to remove remaining spherical harmonics
+    
+    \begin{gather}
+    	\sum_{lm}T_l(k_f,k_i)\delta_{l_fl_i}\delta_{m_fm_i} = \sum_{lm}V_l(k_f,k_i)\delta_{l_fl_i}\delta_{m_fm_i}\\
+    	+ \int_{0}^{\infty} dk \left[\sum_{lm}V_l(k_f,k)T_l(k,k_i)\delta_{l_fl_i}\delta_{m_fm_i}\right]/\left(E + i0 -k^2/2\right)
+    \end{gather}
+    
+    Which simplifies to (unsure about this part actually (or the other parts), this is just what came to mind)
+    
+    \begin{gather}
+    	T_l(k_f,k_i) = V_l(k_f,k_i)
+    	+ \int_{0}^{\infty} dk \left[V_l(k_f,k)T_l(k,k_i)\right]/\left(E + i0 -k^2/2\right)
+    \end{gather}
+    
+    It would have the effect of diagonalising the matricies, which Im unsure is true. 
+
+
+    \subsection{Listings}
+    
+    \subsubsection{Generating V(r)}
+    \label{GeneratingV}
+    
+    \begin{lstlisting}[language=fortran]
+open(1, file="Scattering-Potential.txt", action="write")
+do i=1,nrmax
+	V(i) = zproj*(1.0d0+(1.0d0/rgrid(i)))*exp(-2.0d0*rgrid(i))
+	write(1, *) rgrid(i), V(i)
+end do
+close(1)
+    \end{lstlisting}
+    
+    \subsubsection{Continuum Function Generation}
+    \label{ContFunctionGeneration}
+    
+    In the l loop, the call to \textit{setup\_contwaves(...)} is made to generate continuum waves which are stored in the contwaves(:,:) matrix.
+    For a reference on how the \textit{calculate\_Vmatrix} subroutine see the listing \ref{CreatingVmat}.
+    
+    \begin{lstlisting}
+do l=lmin, lmax
+	!populate contwaves matrix with a continuum wave for each off-shell k
+	!RC: implemented but all cont waves normalised to unity
+	contwaves = 0.0d0
+	call setup_contwaves(nkmax,kgrid,l,nrmax,rgrid,contwaves)
+	
+	!evaluate the V-matrix elements  
+	!RC :: Implemented, checking now. Checked it, looks pretty good
+	call calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
+	
+	open(1, file="Vmat-halfonshell.txt", action="write")
+	do i=1,nkmax
+		write(1, *) kgrid(i), Vmat(i,1)
+	end do
+	close(1)
+	
+	!solve the Lippman-Schwinger equation for the on-shell T-matrix
+	call tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton(l))
+enddo
+    	
+    \end{lstlisting}
+    
+    The function for generating the continuum waves and the Numerov Approximation used to generate an individual continuum wave are listen together below.
+    
+    \begin{lstlisting}[language=fortran]
+subroutine setup_contwaves(nkmax, kgrid, l, nrmax, rgrid, contwaves)
+	implicit none
+	integer, intent(in) :: nkmax, l, nrmax
+	real*8, intent(in) :: kgrid(nkmax), rgrid(nrmax)
+	real*8, intent(out) :: contwaves(nkmax,nrmax)
+	real*8 :: ncontwaves(nkmax,nrmax)
+	real*8 :: g(nrmax) ! RC: I added this one
+	integer :: nk, nr, nodes !indices to loop over k and r
+	real*8 :: E
+	logical :: pass_condition 
+	!>>> iterate over k, populating the contwaves matrix                                 
+	!RC : We need to use forwards numerov to get the continuum waves
+	
+	do nk=1,nkmax
+		E = kgrid(nk)**2/2
+		g = 2*( l*(l+1)/(2*rgrid**2)  - E)
+		call NumerovForwards(nrmax, rgrid, nkmax, 
+				kgrid(nk), contwaves(nk,:), g, l) 
+	end do
+	
+	! These need to made unit valued at their asymptotic region and then normalise
+	
+	Print *, "Writing Numerovl0vsSin.txt, 
+			contains rgrid, first continuum wave and sin(kr)" 
+	open(1, file="Numerovl0vsSin.txt", action="write")
+	do nr=1,nrmax
+		write(1, *) rgrid(nr), contwaves(3,nr), sin(kgrid(3)*rgrid(nr))
+	end do
+	close(1)
+
+end subroutine setup_contwaves
+
+subroutine NumerovForwards(nrmax, rgrid, nkmax, kval, psi, g, l)
+	implicit none 
+	integer, intent(in) :: nrmax, l, nkmax
+	real*8, intent(in) :: g(nrmax), rgrid(nrmax), kval 
+	real*8, intent(inout):: psi(nrmax)
+	real*8 :: psi_ip1, psi_ip2, denom, dr
+	integer*8 :: dfactorial, i, j 
+	! RC : High precision integers becaues of the factorial
+	
+	dr = rgrid(1)
+	
+	!RC : Well we need to make a code to calculate a double factorial now
+	dfactorial=1
+	do i = (2*l+1), 0, -2
+		if(i==0 .or. i==1 .or. i<0) then
+			dfactorial=dfactorial
+		else
+			dfactorial = dfactorial * i
+		end if
+	end do
+	!Print *, "Factorial, l", dfactorial, i
+	
+	!RC : because of page 72 of the lectures
+	psi(1) = (rgrid(1)*kval)**(l+1) / dfactorial 
+	psi(2) = (rgrid(2)*kval)**(l+1) / dfactorial
+	!Print *, "NUMEROV LEFT BOUNDARY ::"
+	!Print *, psi(1), psi(2)
+	
+	do i=3, nrmax 
+		denom = 1-(dr**2/12)*g(i)
+		psi_ip1 = (1 + (5*dr**2/12)*g(i-1) )*psi(i-1)
+		psi_ip2 = (1 - (dr**2/12)*g(i-2) )*psi(i-2)
+		psi(i) = (1/denom) * ( 2*psi_ip1 - psi_ip2)
+	end do
+end subroutine NumerovForwards    	
+    \end{lstlisting}
+    
+    \subsubsection{Calculating the V-matrix}
+    \label{CreatingVmat}
+    
+    Other than the potential, a kgrid V matrix needs to be generated for later use working on creating the K and V matricies and scattering amplitudes.
+    The generation of the 2D V matrix is as below. To see where this function is called, refer to the first listing in this section.
+    
+    \begin{lstlisting}[language=fortran]
+subroutine calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
+	use constants
+	implicit none
+	integer, intent(in) :: nkmax, nrmax
+	real*8, intent(in) :: kgrid(nkmax), contwaves(nkmax,nrmax), 
+			rgrid(nrmax), rweights(nrmax), V(nrmax)
+	real*8, intent(out) :: Vmat(nkmax,nkmax)
+	integer :: nkf,nki, i !indices for looping over on- and off-shell k
+	
+	!>>> evaluate the V-matrix elements and store in the Vmat matrix
+	!    note: the V-matrix is symmetric, make use of this fact to reduce the 
+	!          amount of time spent in this subroutine
+	Vmat=0.0d0
+	do nkf =1, nkmax
+		do nki =nkf,nkmax
+			Vmat(nkf,nki) = (2/pi)*sum(contwaves(nkf,:)
+					*V(:)*contwaves(nki,:)*rweights(:))
+			Vmat(nki,nkf) = Vmat(nkf,nki)
+		end do
+	end do
+
+end subroutine calculate_Vmatrix
+    \end{lstlisting}
+    
+    \subsubsection{Matrix Equation Solver}
+    \label{matrixSolver}
+    
+    This matrix solver is not my code, but for completeness so that it is understood how the matrix equations are solved, the subroutine is listed here:
+    
+    \begin{lstlisting}[language=fortran]
+subroutine tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton)
+	use constants
+	implicit none
+	integer, intent(in) :: nkmax
+	real*8, intent(in) :: kgrid(nkmax), kweights(nkmax), Vmat(nkmax,nkmax)
+	complex*16, intent(out) :: Ton !on-shell T-matrix element
+	complex*16 :: denom
+	real*8 :: &
+	Koff(nkmax-1), & !half-off-shell K-matrix elements
+	Kon,           & !on-shell K-matrix element
+	Von,           & !on-shell V-matrix element
+	A(nkmax-1,nkmax-1) !Coefficient matrix for the linear system Ax=b
+	integer :: f,n,j, ipiv(nkmax-1), info
+	
+	!>>> store the on-shell V-matrix element in Von
+	Von = Vmat(1,1)
+	
+	!>>> populate the matrix A according to Eq (142) in the slides
+	
+	do f=1, nkmax-1
+		do n=1, nkmax-1
+			if(f==n) then
+				A(f,n) = 1 - kweights(n+1)*Vmat(f+1,n+1)
+			else
+				A(f,n) = - kweights(n+1)*Vmat(f+1,n+1)
+			end if
+		end do
+	end do
+	
+	
+	!>>> populate the vector Koff with the 
+	! half-on-shell V-matrix elements (RHS of Eq (141)) 
+	do n=1, nkmax-1
+		Koff(n) = Vmat(n+1,1) 
+	end do
+	
+	!Here is the call to DGESV
+	call dgesv(nkmax-1, 1, A, nkmax-1, ipiv, Koff, nkmax-1, info )
+	if(info /= 0) then
+		print*, 'ERROR in dgesv: info = ', info
+	endif
+	
+	!>>> Now use the half-on-shell K matrix which has been 
+	! stored in Koff to get the on-shell K-matrix element Kon
+	
+	Kon = Vmat(1,1) + sum(kweights(2:)*Vmat(1,2:)*Koff)
+	
+	!>>> And then use Kon to get the on-shell T-matrix element Ton
+	
+	denom = complex(1, (pi/kgrid(1))*Kon)
+	
+	Ton = Kon/denom
+	
+	Print *, "Complex declaration :::"
+	Print *, "Kon", Kon
+	Print *, Ton
+
+end subroutine tmatrix_solver
+
+    \end{lstlisting}
+    The call to this function is again in the do loop of the first  listing.
+    
+    \subsubsection{Generating the Scattering Amplitude and Computing the DCS}
+    \label{ScatteringAmp}
+    
+    The generation of the scattering amplitudes is done when the DCS is being generated. In the loop where \textit{f(ntheta)} is evaluated is where the scattering amplitude function is generated. Seeing as the DCS is the squared absolute magnitude of the scattering amplitude, its calculated immediately after generation of the \textit{f} vector.
+    
+    \begin{lstlisting}[language=fortran]
+subroutine compute_dcs(nthetamax, theta, lmin, lmax, Ton, k, DCS)
+	use constants
+	implicit none
+	integer, intent(in) :: nthetamax, lmin, lmax
+	real*8, intent(in) :: theta(nthetamax), k
+	complex*16, intent(in) :: Ton(0:lmax)
+	real*8, intent(out) :: DCS(nthetamax)
+	integer :: l, ntheta !loop indices
+	real*8:: PL, PLval!Legendre polynomials - from file plql.f
+	real*8 :: costheta !use this to store cos(theta in radians)
+	complex*16 :: f(nthetamax) !scattering amplitude
+	
+	!>>> calculate the scattering amplitude f(theta) for each theta
+	!    by iterating over l and using the partial-wave
+	!    expansion of f
+	! RC :: I'll do this using the equation 115 of the lecture slides
+	f = 0.0d0
+	do ntheta=1,nthetamax
+		do l=lmin,lmax
+			costheta = cos(theta(ntheta) * (pi/180))
+			f(ntheta) = f(ntheta) + (-pi/k**2) * (2*l+1) 
+				* Ton(l) * PL(l, costheta)
+		end do
+	end do
+	
+	!>>> obtain the DCS from the scattering amplitude
+	! RC :: DCS is obtained by eqn 117, remember to do the 
+	! complex conjugate, so exploit the abs functions complex arguments
+	
+	DCS = abs(f)**2
+
+end subroutine compute_dcs
+    \end{lstlisting}
+    
+    \subsubsection{Partial and Total ICS}
+    \label{ICSmake}
+    
+    We create the partial ICS values in the \textit{compute\_ics} function and then when writing to file, add the sum per l as a column during the loop for the file output.
+    
+	\begin{lstlisting}[language=fortran]
+subroutine compute_ics(lmin, lmax, Ton, k, ICS)
+	use constants
+	implicit none
+	integer, intent(in) :: lmin, lmax
+	complex*16, intent(in) :: Ton(lmin:lmax)
+	real*8, intent(in) :: k
+	real*8, intent(out) :: ICS(lmin:lmax)
+	integer :: l
+	
+	!>>> populate the ICS array with the partial-wave ICS per l
+	do l=lmin,lmax
+		ICS(l) = (4*pi**3 / k**4) * (2*l+1) * abs(Ton(l))**2
+	end do
+end subroutine compute_ics
+
+	\end{lstlisting}
+
+    File output line here
+	\begin{lstlisting}[language=fortran]
+open(1, file="ICSout.txt", action="write")
+do l=lmin,lmax
+	write(1, "(*(g0.6,:,','))") ICS(l), sum(ICS(lmin:l))
+end do
+close(1)
+
+	\end{lstlisting}
+    
+
+
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
