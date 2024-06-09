@@ -90,7 +90,7 @@ program main
 
 
          ! calculate kgrid params
-         nk = kmax/dk
+         nk = kmax/dk + 1 
          Print *, "nk ::", nk
 
 
