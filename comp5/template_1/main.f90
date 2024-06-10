@@ -122,7 +122,7 @@ program main
 !RC :: Implemented, checking now. Checked it, looks pretty good
       !call calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
        call Vmatsub(kgrid, Vmat, nkmax, 100.0d0, 0.001d0, 1.0d0, 0.0d0, 1.0d0, 0.0d0, 1, 1, 50)      
-       !    Vmatsub(kgrid, Vtotal, nk, projE, rmax, dr, alpha, l, S, theta, H_init, H_final)
+       !    Vmatsub(kgrid, Vtotal, nk, rmax, dr, alpha, l, S, theta, H_init, H_final, N)
 
       open(1, file="Vmat-halfonshell.txt", action="write")
       do i=2,nkmax
@@ -304,12 +304,6 @@ subroutine tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton)
   do n=1, nkmax-1
     Koff(n) = Vmat(1+n,1) 
   end do
-  
-  open(1, file="Koff.txt", action="write")
-  do n=2, nkmax-1
-      write(1,*) kgrid(n),Koff(n)
-  end do
-
 
  
   !Here is the call to DGESV
@@ -317,6 +311,12 @@ subroutine tmatrix_solver(nkmax,kgrid,kweights,Vmat,Ton)
   if(info /= 0) then
     print*, 'ERROR in dgesv: info = ', info
   endif
+
+  open(1, file="Koff.txt", action="write")
+  do n=2, nkmax
+      write(1,*) kgrid(n),Koff(n-1)
+  end do
+
 
   !>>> Now use the half-on-shell K matrix which has been stored in Koff to get the on-shell K-matrix element Kon
   

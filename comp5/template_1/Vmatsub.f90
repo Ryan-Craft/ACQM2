@@ -80,6 +80,10 @@ subroutine Vmatsub(kgrid, Vtotal, nk, rmax, dr, alpha, l, S, theta, H_init, H_fi
          real*8, dimension(:,:), allocatable :: totalV
          real*8, dimension(:), allocatable :: onshellv, onshellEx
 
+         Print *, "SUBROUTINE RUNNING: THETA, S"
+         Print *, theta, S
+
+
          !open file location: hard coded for now but could become flexible
          !read stored values into relevent variables
 
