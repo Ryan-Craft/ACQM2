@@ -22,13 +22,13 @@ subroutine LaguerreSub(alpha, l, nr, N, rgrid, basis)
 end subroutine LaguerreSub
 
 
-subroutine Vmatsub(kgrid, Vtotal, nk, rmax, dr, alpha, l, S, theta, H_init, H_final, N)
+subroutine Vmatsub(kgrid, Vtotal, nk, rmax, dr, alpha, l, S, theta, H_init, H_final, N, projE)
          implicit none
 
          !! INTENT IN
          integer, intent(in) :: nk, H_init, H_final, N
          real*8, dimension(nk), intent(in) :: kgrid
-         real*8, intent(in) :: dr, alpha, rmax, S, theta, l
+         real*8, intent(in) :: dr, alpha, rmax, S, theta, l, projE
  
          !! INTENT INOUT
          real*8, dimension(nk,nk), intent(out) :: Vtotal
@@ -80,8 +80,8 @@ subroutine Vmatsub(kgrid, Vtotal, nk, rmax, dr, alpha, l, S, theta, H_init, H_fi
          real*8, dimension(:,:), allocatable :: totalV
          real*8, dimension(:), allocatable :: onshellv, onshellEx
 
-         Print *, "SUBROUTINE RUNNING: THETA, S"
-         Print *, theta, S
+         Print *, "SUBROUTINE RUNNING: THETA, S, Incident Energy eV"
+         Print *, theta, S, projE
 
 
          !open file location: hard coded for now but could become flexible
@@ -249,7 +249,7 @@ subroutine Vmatsub(kgrid, Vtotal, nk, rmax, dr, alpha, l, S, theta, H_init, H_fi
 
 !!! SETUP EXCHANGE ELEMENTS
 !!!! hard coded projectile energy
-         energy = 54.4232/27.21136 - 0.5
+         energy = projE/27.21136 - 0.5
          energy = energy * (1 - theta + theta*(-1)**S)
          ! V1 and V2
          do i =1,nk

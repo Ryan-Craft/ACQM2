@@ -121,7 +121,7 @@ program main
     !evaluate the V-matrix elements  
 !RC :: Implemented, checking now. Checked it, looks pretty good
       !call calculate_Vmatrix(nkmax,kgrid,contwaves,nrmax,rgrid,rweights,V,Vmat)
-       call Vmatsub(kgrid, Vmat, nkmax, 100.0d0, 0.001d0, 1.0d0, 0.0d0, 1.0d0, 0.0d0, 1, 1, 50)      
+       call Vmatsub(kgrid, Vmat, nkmax, 100.0d0, 0.001d0, 1.0d0, 0.0d0, 1.0d0, 2.0d0, 1, 1, 50, energy*ev)      
        !    Vmatsub(kgrid, Vtotal, nk, rmax, dr, alpha, l, S, theta, H_init, H_final, N)
 
       open(1, file="Vmat-halfonshell.txt", action="write")
