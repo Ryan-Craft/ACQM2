@@ -22,17 +22,23 @@ subroutine LaguerreSub(alpha, l, nr, N, rgrid, basis)
 end subroutine LaguerreSub
 
 
-program main
+subroutine Vmatsub(kgrid, Vtotal, nk, rmax, dr, alpha, l, S, theta, H_init, H_final, N)
          implicit none
 
+         !! INTENT IN
+         integer, intent(in) :: nk, H_init, H_final, N
+         real*8, dimension(nk), intent(in) :: kgrid
+         real*8, intent(in) :: dr, alpha, rmax, S, theta, l
+ 
+         !! INTENT INOUT
+         real*8, dimension(nk,nk), intent(out) :: Vtotal
+
+         !! LOCAL
 
          real*8 :: normalise
-         real*8 :: alpha, l
-         real*8 :: dr, rmax
          integer*8 :: p
-         integer :: N, nr, ier
+         integer :: nr, ier
          integer :: i,j
-         real*8, dimension(:), allocatable :: rgrid
          real*8, dimension(:,:), allocatable :: basis
          
          !add in overlap and hamiltonian
@@ -49,16 +55,16 @@ program main
 
          ! fortran constant
          real, parameter :: pi = 4.0d0*atan(1.0d0)
-         real, parameter :: radtodeg = 180.0d0/pi
 
          ! additions for assignment 5, energy grid
-         real*8, dimension(:), allocatable :: kgrid, rweights
-         integer :: nk, ii, jj
-         real*8 :: kmax, dk, deltafi, H_init, H_final, energy, projE, kp, S, theta
+         integer :: ii, jj
+         real*8 :: deltafi, energy, kp
          real*8, dimension(:), allocatable :: A1
          real*8, dimension(:), allocatable :: A2
          real*8, dimension(:), allocatable :: f
          real*8, dimension(:), allocatable :: g
+         real*8, dimension(:), allocatable :: rgrid
+         real*8, dimension(:), allocatable :: rweights
          real*8, dimension(:,:), allocatable :: Vdirect
          real*8, dimension(:), allocatable :: foverlap
          real*8, dimension(:), allocatable :: ioverlap
@@ -76,26 +82,14 @@ program main
 
          !open file location: hard coded for now but could become flexible
          !read stored values into relevent variables
-         
-         open(unit=1, file="LaguerreParams.txt", action="read")
-         read(1,*) alpha, N, l, dr, rmax, dk, kmax, H_init, H_final, projE
-         Print *, alpha, N, l, dr, rmax, dk, kmax, H_init, H_final, projE
 
-         !calculate rgrid params
          nr = rmax/dr
          Print *, "nr ::", nr
-        
          if (mod(nr,2)==0) nr=nr+1
-          
-
-         ! calculate kgrid params
-         nk = kmax/dk + 1 
-         Print *, "nk ::", nk
-
+        
 
          ! based on options from file, allocate appropriate memory to rgrid and the basis array
-         allocate(rgrid(nr))
-         allocate(basis(nr,N))
+         allocate(basis(nr,N), rgrid(nr), rweights(nr))
          allocate(H(N,N))
          allocate(B(N,N))
          allocate(V(N,N))
@@ -103,28 +97,21 @@ program main
          allocate(w(N,1)) 
          allocate(z(N,N))
          allocate(wf(nr,N))
-         allocate(kgrid(nk))         
-         allocate(rweights(nr))
          allocate(Vdirect(nk,nk))
-         allocate(ioverlap(nk), foverlap(nk), V1(nk), V2(nk), V12(nk,nk), V2mat(nk,nk), V1mat(nk,nk), Exchange(nk,nk), Eoverlap(nk,nk))
+         allocate(ioverlap(nk), foverlap(nk), V1(nk), V2(nk), V12(nk,nk), V2mat(nk,nk), &
+                  V1mat(nk,nk), Exchange(nk,nk), Eoverlap(nk,nk))
          allocate(analyticalEx(nk,3)) 
          allocate(analyticalV(nk,3))
-!!! YOU HAVE CHANGED WHAT RANGE THE RGRID GOES OVER DO NOT FORGOR
-         !allocate values to the rgrid and kgrid
+
          do i = 1, nr
                 rgrid(i) = (i)*dr
-         end do 
-         
-         do i =1,nk
-                kgrid(i) = dk*(i-1)
          end do
-
-         ! generate weights for r dimension integration process on an even grid
          rweights = 1.d0
          do i =2,nr-1
              rweights(i) = 2.0d0 + 2.0d0*mod(i+1,2)
          end do
-         rweights = rweights * dr / 3.0d0
+         rweights = rweights * dr / 3.0d0 
+
 
 
          Print *, "rgrid and kgrid first 5 values"
@@ -150,7 +137,6 @@ program main
          end do
 
  
- 
          !write basis to file for plotting 
          open(1, file='basisout.txt', action='write')
          do i =1,nr
@@ -167,10 +153,6 @@ program main
                  B(i+1,i) = B(i,i+1)
          end do
          B(N,N) = 1.0d0 
-         Print *, "B ARRAY ::" 
-         do i=1,N
-                 !Print *, B(i,:)
-         end do
  
          !calculate V matrix:
          V = 0.0d0
@@ -201,10 +183,6 @@ program main
                  end do
                  if (wf(1, i) < 0) wf(:, i) = -wf(:, i)
          end do
-         Print *, "W::"
-         !Print *, w(1,:)
-         Print *, "Z::"
-         !Print *, z(1,:)
 
          open(1, file='wfout.txt', action='write')
          do i =1,nr
@@ -212,19 +190,9 @@ program main
          end do
          close(1)
          
-         open(1, file='wout.txt',action='write', access='append')
-         do i =1,N
-                 write(1, '(*(f12.8))'), real(N), w(i,1)
-         end do
- 
-
-         
 
          !!! Assignment 5 additional
          ! memory allocations
-
-         S=0.0d0
-         theta = 0.0d0
 
          allocate(A1(nr)) 
          allocate(A2(nr))
@@ -245,12 +213,7 @@ program main
              A2(i) = A2(i+1) + (1/rgrid(i))*rweights(i)*g(i)
          end do
 
-         Print *, "A1 and A2"
-         Print *, A1(1:5)
-         Print *, A2(1:5)
-
          Vdirect=0.0d0
-         
 
         ! generating direct V matrix
          do i=1,nk
@@ -269,33 +232,21 @@ program main
          end do
          Vdirect = Vdirect * (2.0d0/pi) 
 
-!!  evaluating on shell direct term
-         do i =1,nk
-             kp = sqrt(-1.0d0 + (1.0d0/H_final**2) + kgrid(i)**2)
-             f = sin(kgrid(i)*rgrid(:)) * sin(kp*rgrid(:))
-             if(H_init==H_final) then
-                 deltafi = 1.0d0
-                     else
-                 deltafi = 0.0d0
-             end if
-             onshellv(i) = sum(rweights(:)*f(:)*((1/rgrid(:) * A1(:) + A2(:)) - deltafi/rgrid(:)))             
-         end do
-         onshellv = onshellv * (2.0d0/pi)
-
-
-         !! output direct terms
          open(1, file="Vdirectout.txt", action="write")
          do i=1,nk
              do j=1,nk
                  write(1, *) kgrid(i), kgrid(j), Vdirect(i,j)
              end do
                  write(1, *) ""
-         end do  
+         end do
          close(1)
 
+
+
 !!! SETUP EXCHANGE ELEMENTS
-         energy = projE/27.21136 - 0.5
-         energy = energy * (1 + theta * ((-1)**S - 1))
+!!!! hard coded projectile energy
+         energy = 54.4232/27.21136 - 0.5
+         energy = energy * (1 - theta + theta*(-1)**S)
          ! V1 and V2
          do i =1,nk
              V1(i) = -sum(rweights * sin(kgrid(i)*rgrid) * wf(:,H_init)/rgrid) 
@@ -312,6 +263,7 @@ program main
                  Eoverlap(j,i) = (energy - kgrid(j)**2/2.0d0 - kgrid(i)**2/2.0d0) * ioverlap(i)* foverlap(j)
              end do
          end do
+
 
          ! we are going to reuse f and g her. also A1 and A2
          g = 0.0d0 
@@ -341,38 +293,7 @@ program main
          end do
          Exchange = 0.0d0
          Exchange = (Eoverlap - V1mat - V2mat - V12)*(2.0d0/pi)
-
-
-!! ON SHELL EXCHANGE ONLY
-
-         ! V1 and V2
-         do i =1,nk
-             kp = sqrt(-1.0d0 + (1.0d0/H_final**2) + kgrid(i)**2)
-             V1(i) = -sum(rweights * sin(kp*rgrid) * wf(:,H_init)/rgrid)
-             V2(i) = -sum(rweights * sin(kgrid(i)*rgrid) * wf(:,H_final)/rgrid)
-             ioverlap(i) = sum(rweights*sin(kgrid(i)*rgrid)*wf(:,H_final))
-             foverlap(i) = sum(rweights*sin(kp*rgrid)*wf(:,H_init))
-             
-             energy = kgrid(i)**2/2 - 0.5
-             energy = energy * (1 + theta * ((-1)**S - 1))
  
-             g = sin(kgrid(i)*rgrid(:)) * wf(:,H_final)
-
-             A1(1) = rweights(1)*g(1)
-             do ii=2,nr
-                 A1(ii) = A1(ii-1) + rweights(ii)*g(ii)
-             end do
-
-             A2(nr) = (1/rgrid(nr))*rweights(nr)*g(nr)
-             do ii=nr-1,1,-1
-                 A2(ii) = A2(ii+1) + (1/rgrid(ii))*rweights(ii)*g(ii)
-             end do
-             f = sin(kp*rgrid(:))*wf(:,H_init)
-             onshellEx(i) = (energy - kp**2/2.0d0 - kgrid(i)**2/2.0d0) * ioverlap(i)* foverlap(i) &
-                            - V1(i) * ioverlap(i) - V2(i) * foverlap(i) - sum(rweights * f * ((1/rgrid)*A1 + A2))
-         end do
-         onshellEx = onshellEx*(2.0d0/pi)
-
          open(1, file="Exchange.txt", action="write")
          do i=1,nk
              do j=1,nk
@@ -382,34 +303,21 @@ program main
          end do
          close(1)
 
-
-         !! POPULATE AT 4xnk array
-
-         do i=1,nk
-              analyticalV(i,1) = -(kgrid(i)**2 / (kgrid(i)**2 + 1.d0) + log(kgrid(i)**2 + 1.d0)) / 2.d0 / pi
-              analyticalV(i,2) = 32.d0 * kgrid(i) * (4.d0*kgrid(i)**2 + 3.d0) * sqrt(8.d0*kgrid(i)**2 - 6.d0) &
-        / (4.d0*kgrid(i)**2 + 1.d0)**2 / 81.d0 / pi
-              analyticalV(i,3) = 9.d0 * sqrt(3.d0)*kgrid(i) * (135.d0*kgrid(i)**4 + 87.d0*kgrid(i)**2 - 4.d0) &
-        * sqrt(9.d0*kgrid(i)**2 - 8.d0) / (9.d0*kgrid(i)**2 + 1.d0)**3 / 64.d0 / pi
-              analyticalEx(i,1) = -2.d0 * (kgrid(i))**2 * ((kgrid(i))**2 - 3.d0) / ((kgrid(i))**2 + 1.d0)**3 / pi
-              analyticalEx(i,2) = -32.d0 * kgrid(i) * (16.d0*kgrid(i)**4 - 72.d0*kgrid(i)**2 + 13.d0) &
-        * sqrt(8.d0*kgrid(i)**2 - 6) / (4.d0*kgrid(i)**2 + 1.d0)**4 / 9.d0 / pi
-              analyticalEx(i,3) = -9.d0 * sqrt(3.d0)*kgrid(i) * (1701.d0*kgrid(i)**6 - 8208.d0*kgrid(i)**4 &
-        + 2325.d0*kgrid(i)**2 - 70.d0) * sqrt(9.d0*kgrid(i)**2 - 8.d0) / (9.d0*kgrid(i)**2 + 1.d0)**5 &
-        / 4.d0 / pi
-              
-         end do
-
-         open(1, file="DirectAvsC.txt", action="write")
-         do i=1,nk
-            write(1, *), kgrid(i), analyticalV(i,H_final), onshellV(i), analyticalEx(i,H_final), onshellEx(i)
-         end do
-         
+ 
          allocate(totalV(nk,nk))
-         totalV = Vdirect - Exchange
+         Vtotal = Vdirect - (-1.0d0**S)*Exchange
+
+         open(1, file="Vtotal.txt", action="write")
+         do i=1,nk
+             do j=1,nk
+                 write(1, *) kgrid(i), kgrid(j), Vtotal(i,j)
+             end do
+                 write(1, *) ""
+         end do
+         close(1)
 
 
-         deallocate(rgrid)
+
          deallocate(basis)
          if (N>1) then
             deallocate(H)
@@ -422,7 +330,7 @@ program main
 
        
 
-end program
+end subroutine Vmatsub
 
 
 
